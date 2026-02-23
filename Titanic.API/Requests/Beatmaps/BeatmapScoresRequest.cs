@@ -3,7 +3,7 @@ using Titanic.API.Models;
 
 namespace Titanic.API.Requests
 {
-    public class BeatmapScoresRequest : APIRequest<List<ScoreModelWithoutBeatmap>>
+    public class BeatmapScoresRequest : APIRequest<ScoreCollectionResponseCompact>
     {
         public int BeatmapId { get; set; }
 
@@ -12,9 +12,9 @@ namespace Titanic.API.Requests
             BeatmapId = beatmapId;
         }
         
-        protected override List<ScoreModelWithoutBeatmap> Execute(TitanicAPI api)
+        protected override ScoreCollectionResponseCompact Execute(TitanicAPI api)
         {
-            return api.Get<List<ScoreModelWithoutBeatmap>>($"/beatmaps/{BeatmapId}/scores");
+            return api.Get<ScoreCollectionResponseCompact>($"/beatmaps/{BeatmapId}/scores");
         }
     }
 }

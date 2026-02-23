@@ -29,6 +29,30 @@ namespace Titanic.API.Models
         [JsonProperty("filename")]
         public string Filename { get; set; }
 
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonProperty("last_update")]
+        public DateTime LastUpdate { get; set; }
+
+        [JsonProperty("playcount")]
+        public int Playcount { get; set; }
+
+        [JsonProperty("passcount")]
+        public int Passcount { get; set; }
+
+        [JsonProperty("total_length")]
+        public int TotalLength { get; set; }
+
+        [JsonProperty("drain_length")]
+        public int DrainLength { get; set; }
+
+        [JsonProperty("max_combo")]
+        public int MaxCombo { get; set; }
+
+        [JsonProperty("bpm")]
+        public float BPM { get; set; }
+
         [JsonProperty("diff")]
         public float Diff { get; set; }
 
@@ -43,6 +67,18 @@ namespace Titanic.API.Models
 
         [JsonProperty("hp")] 
         public float HP { get; set; }
+
+        [JsonProperty("count_normal")]
+        public int CountNormal { get; set; }
+
+        [JsonProperty("count_slider")]
+        public int CountSlider { get; set; }
+
+        [JsonProperty("count_spinner")]
+        public int CountSpinner { get; set; }
+
+        [JsonProperty("slider_multiplier")]
+        public float SliderMultiplier { get; set; }
     }
 
     public class BeatmapModel : BeatmapModelCompact

@@ -45,10 +45,10 @@ namespace Titanic.API.Models
         public int Offset { get; set; }
 
         [JsonProperty("server")]
-        public int Server { get; set; }
+        public BeatmapServer Server { get; set; }
 
         [JsonProperty("download_server")]
-        public int DownloadServer { get; set; }
+        public BeatmapServer DownloadServer { get; set; }
 
         [JsonProperty("available")]
         public bool Available { get; set; }

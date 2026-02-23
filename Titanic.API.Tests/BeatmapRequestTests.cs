@@ -94,5 +94,28 @@ namespace Titanic.API.Tests
             Assert.NotNull(beatmapSet);
             Assert.Contains(beatmapSet.Beatmaps, b => b.Id == beatmap.Id);
         }
+
+        [Fact]
+        public void GetBeatmapScores_ValidBeatmapId_ReturnsScores()
+        {
+            // Arrange
+            var request = new BeatmapScoresRequest(75);
+
+            // Act
+            var response = request.BlockingPerform(Api);
+
+            // Assert
+            Assert.NotNull(response);
+            Assert.True(response.Total >= 0);
+            Assert.NotNull(response.Scores);
+            Assert.NotEmpty(response.Scores);
+
+            var score = response.Scores[0];
+            Assert.True(score.Id > 0);
+            Assert.True(score.UserId > 0);
+            Assert.NotNull(score.User);
+            Assert.True(score.User.Id > 0);
+            Assert.False(string.IsNullOrEmpty(score.Grade));
+        }
     }
 }

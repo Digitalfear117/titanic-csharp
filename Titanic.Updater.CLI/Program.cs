@@ -81,6 +81,7 @@ internal static class Program
         Console.WriteLine($"Created patch update manifest: {Path.GetFullPath(result.ManifestPath)}");
         Console.WriteLine($"Client: {manifest.Client}");
         Console.WriteLine($"Version: {manifest.From.Version} -> {manifest.To.Version}");
+        Console.WriteLine($"Payloads: {result.Payloads.Count} ({result.Payloads.Sum(payload => payload.Size)} bytes)");
         Console.WriteLine($"Actions: {manifest.Actions.Count}");
 
         PrintActionCount(manifest, "patch");

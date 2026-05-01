@@ -77,7 +77,7 @@ public sealed class PatchUpdateApplier
 
     private void Replace(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
-        string temp = DownloadPayload(part, action, action.Checksum, "replacement");
+        string temp = DownloadPayload(part, action.SourceUrlFull, action.Source, action.Checksum, "replacement");
         string destination = GetDestination(action.Destination);
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
@@ -98,7 +98,7 @@ public sealed class PatchUpdateApplier
         if (File.Exists(destination))
             return;
 
-        string temp = DownloadPayload(part, action, action.Checksum, "stored file");
+        string temp = DownloadPayload(part, action.SourceUrlFull, action.Source, action.Checksum, "stored file");
 
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
@@ -107,19 +107,39 @@ public sealed class PatchUpdateApplier
     private void Patch(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
         string destination = GetDestination(action.Destination);
-        if (!File.Exists(destination))
-            throw new PatchUpdateException($"Cannot patch missing destination: {action.Destination}");
 
-        VerifyFileChecksum(destination, action.SourceChecksum, "patch source");
+        try
+        {
+            if (!File.Exists(destination))
+                throw new PatchUpdateException($"Cannot patch missing destination: {action.Destination}");
 
-        string patchFile = DownloadPayload(part, action, action.PatchChecksum, "patch");
+            VerifyFileChecksum(destination, action.SourceChecksum, "patch source");
 
-        string result = Path.Combine(_stagingDir, Guid.NewGuid().ToString("N") + ".patched");
-        new BSPatcher().Patch(destination, result, patchFile);
-        VerifyFileChecksum(result, action.ResultChecksum, "patch result");
+            string patchFile = DownloadPayload(part, action.SourceUrlPatch, action.Source, action.PatchChecksum, "patch");
 
-        BackupDestination(destination, backupRoot, backups);
-        MoveFileAndReplace(result, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
+            string result = Path.Combine(_stagingDir, Guid.NewGuid().ToString("N") + ".patched");
+            new BSPatcher().Patch(destination, result, patchFile);
+            VerifyFileChecksum(result, action.ResultChecksum, "patch result");
+
+            BackupDestination(destination, backupRoot, backups);
+            MoveFileAndReplace(result, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
+        }
+        catch (Exception patchException)
+        {
+            try
+            {
+                string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.ResultChecksum), action.ResultChecksum, "full patch fallback");
+                BackupDestination(destination, backupRoot, backups);
+                MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
+            }
+            catch (Exception fallbackException)
+            {
+                throw new PatchUpdateException(
+                    $"Patch action failed for '{action.Destination}' and full payload fallback also failed. Patch failure: {patchException.Message}. Fallback failure: {fallbackException.Message}",
+                    fallbackException
+                );
+            }
+        }
     }
 
     private void VerifyFileChecksum(string path, string expected, string label)
@@ -136,10 +156,10 @@ public sealed class PatchUpdateApplier
     /// <summary>
     /// Downloads a payload file to a temporary or cached location.
     /// </summary>
-    private string DownloadPayload(DownloadedUpdatePart part, UpdateAction action, string expectedChecksum, string label)
+    private string DownloadPayload(DownloadedUpdatePart part, string sourceUrl, string cacheSource, string expectedChecksum, string label)
     {
-        Uri payloadUri = ResolvePayloadUri(part, action);
-        string outputPath = GetPayloadPath(part, action, payloadUri);
+        Uri payloadUri = ResolvePayloadUri(part, sourceUrl, label);
+        string outputPath = GetPayloadPath(part, cacheSource, payloadUri);
 
         string? directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(directory))
@@ -173,15 +193,15 @@ public sealed class PatchUpdateApplier
         return stagingPath;
     }
 
-    private Uri ResolvePayloadUri(DownloadedUpdatePart part, UpdateAction action)
+    private Uri ResolvePayloadUri(DownloadedUpdatePart part, string sourceUrl, string label)
     {
-        if (Uri.TryCreate(action.SourceUrl, UriKind.Absolute, out Uri? uri))
+        if (Uri.TryCreate(sourceUrl, UriKind.Absolute, out Uri? uri))
             return ValidatePayloadUri(uri);
 
         if (string.IsNullOrEmpty(part.ManifestUrl) || !Uri.TryCreate(part.ManifestUrl, UriKind.Absolute, out Uri? manifestUri))
-            throw new PatchUpdateException($"Action '{action.Type}' has a relative source_url but the manifest URL is not absolute");
+            throw new PatchUpdateException($"Payload '{label}' has a relative URL but the manifest URL is not absolute");
 
-        return ValidatePayloadUri(new Uri(manifestUri, action.SourceUrl));
+        return ValidatePayloadUri(new Uri(manifestUri, sourceUrl));
     }
 
     private static Uri ValidatePayloadUri(Uri uri)
@@ -196,7 +216,7 @@ public sealed class PatchUpdateApplier
     /// Gets the path to store the downloaded payload for a patch action.
     /// If caching is enabled, this will be a cache path; otherwise, it will be a temporary path in the staging directory.
     /// </summary>
-    private string GetPayloadPath(DownloadedUpdatePart part, UpdateAction action, Uri payloadUri)
+    private string GetPayloadPath(DownloadedUpdatePart part, string cacheSource, Uri payloadUri)
     {
         if (!_settings.CachePatchPayloads)
             return Path.Combine(_stagingDir, "_payload_" + Guid.NewGuid().ToString("N"));
@@ -207,9 +227,9 @@ public sealed class PatchUpdateApplier
         string payloadsPath = Path.Combine(dataDirectoryPath, "_payloads");
         string cacheRoot = Path.Combine(payloadsPath, manifestKey);
 
-        string source = string.IsNullOrEmpty(action.Source)
+        string source = string.IsNullOrEmpty(cacheSource)
             ? ChecksumUtils.ComputeMd5(new MemoryStream(Encoding.UTF8.GetBytes(payloadUri.ToString())))
-            : action.Source;
+            : cacheSource;
         return UpdatePathUtil.CombineSafe(cacheRoot, source);
     }
 
@@ -333,5 +353,10 @@ public sealed class PatchUpdateApplier
     {
         using TitanicAPI api = new();
         return api.Download(url);
+    }
+
+    private static string CreateFileSourceName(string hash)
+    {
+        return $"f_{hash}";
     }
 }

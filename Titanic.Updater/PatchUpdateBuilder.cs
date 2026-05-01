@@ -84,21 +84,28 @@ public sealed class PatchUpdateBuilder
                 if (patchInfo.Length < newInfo.Length)
                 {
                     // Add patch action if the patch is smaller than the new file
-                    string sourceName = CreatePatchSourceName(oldHash, newHash);
+                    string patchSourceName = CreatePatchSourceName(oldHash, newHash);
+                    string fullSourceName = CreateFileSourceName(newHash);
 
-                    PatchUpdatePayload payload = CopyPayload(
-                        outputDirectory, baseUri, sourceName,
+                    PatchUpdatePayload patchPayload = CopyPayload(
+                        outputDirectory, baseUri, patchSourceName,
                         patchPath, ChecksumUtils.ComputeMd5(patchPath)
                     );
-                    payloads.Add(payload);
+                    PatchUpdatePayload fullPayload = CopyPayload(
+                        outputDirectory, baseUri, fullSourceName,
+                        newFile.Value, newHash
+                    );
+                    payloads.Add(patchPayload);
+                    payloads.Add(fullPayload);
                     manifest.Actions.Add(new UpdateAction
                     {
                         Type = "patch",
-                        Source = payload.Source,
-                        SourceUrl = payload.Url,
+                        Source = patchPayload.Source,
+                        SourceUrlPatch = patchPayload.Url,
+                        SourceUrlFull = fullPayload.Url,
                         Destination = newFile.Key,
                         SourceChecksum = oldHash,
-                        PatchChecksum = payload.Checksum,
+                        PatchChecksum = patchPayload.Checksum,
                         ResultChecksum = newHash,
                         Algorithm = UpdateManifestValidator.SupportedPatchAlgorithm
                     });
@@ -162,7 +169,7 @@ public sealed class PatchUpdateBuilder
         {
             Type = type,
             Source = payload.Source,
-            SourceUrl = payload.Url,
+            SourceUrlFull = payload.Url,
             Destination = destination,
             Checksum = payload.Checksum
         });

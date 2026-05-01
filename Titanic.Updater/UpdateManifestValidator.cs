@@ -30,6 +30,7 @@ public static class UpdateManifestValidator
         {
             case "replace":
                 RequirePayloadSource(action);
+                RequireSourceUrl(action.SourceUrlFull, "source_url_full", type);
                 RequireDestination(action);
                 RequireChecksum(action.Checksum, "checksum", type);
                 break;
@@ -40,12 +41,15 @@ public static class UpdateManifestValidator
 
             case "store_if_not_exists":
                 RequirePayloadSource(action);
+                RequireSourceUrl(action.SourceUrlFull, "source_url_full", type);
                 RequireDestination(action);
                 RequireChecksum(action.Checksum, "checksum", type);
                 break;
 
             case "patch":
                 RequirePayloadSource(action);
+                RequireSourceUrl(action.SourceUrlPatch, "source_url_patch", type);
+                RequireSourceUrl(action.SourceUrlFull, "source_url_full", type);
                 RequireDestination(action);
                 RequireChecksum(action.SourceChecksum, "source_checksum", type);
                 RequireChecksum(action.PatchChecksum, "patch_checksum", type);
@@ -63,9 +67,6 @@ public static class UpdateManifestValidator
     private static void RequirePayloadSource(UpdateAction action)
     {
         UpdatePathUtil.EnsureRelativeSafePath(action.Source, "Source");
-
-        if (string.IsNullOrEmpty(action.SourceUrl))
-            throw new PatchUpdateException($"Action '{action.Type}' is missing source_url");
     }
 
     private static void RequireDestination(UpdateAction action)
@@ -76,6 +77,12 @@ public static class UpdateManifestValidator
     private static void RequireChecksum(string checksum, string name, string actionType)
     {
         if (string.IsNullOrEmpty(checksum))
+            throw new PatchUpdateException($"Action '{actionType}' is missing {name}");
+    }
+
+    private static void RequireSourceUrl(string sourceUrl, string name, string actionType)
+    {
+        if (string.IsNullOrEmpty(sourceUrl))
             throw new PatchUpdateException($"Action '{actionType}' is missing {name}");
     }
 }

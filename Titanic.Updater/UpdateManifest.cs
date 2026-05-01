@@ -37,8 +37,11 @@ public class UpdateAction
     [JsonProperty("source")]
     public string Source { get; set; }
 
-    [JsonProperty("source_url")]
-    public string SourceUrl { get; set; }
+    [JsonProperty("source_url_patch")]
+    public string SourceUrlPatch { get; set; }
+
+    [JsonProperty("source_url_full")]
+    public string SourceUrlFull { get; set; }
 
     [JsonProperty("destination")]
     public string Destination { get; set; }

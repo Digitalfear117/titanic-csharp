@@ -10,7 +10,7 @@ ModdedClientInformation client = new()
 {
     ClientIdentifier = "retrogecko",
     VersionKind = OsuVersionKind.BuildNumber,
-    InstalledStream = "linux-x64",
+    InstalledStream = "net9.0-linux-x64",
     InstalledVersion = "b520",
 };
 

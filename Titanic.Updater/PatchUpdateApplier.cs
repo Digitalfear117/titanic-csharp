@@ -49,8 +49,8 @@ public sealed class PatchUpdateApplier
         UpdateManifest manifest = part.Manifest ?? UpdateManifestReader.ReadFromFile(part.Path);
         UpdateManifestValidator.Validate(manifest, part.ClientIdentifier);
 
-        for (int i = 0; i < manifest.Actions.Count; i++)
-            ApplyAction(part, manifest.Actions[i], backupRoot, backups);
+        foreach (var action in manifest.Actions)
+            ApplyAction(part, action, backupRoot, backups);
     }
 
     private void ApplyAction(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
@@ -77,8 +77,14 @@ public sealed class PatchUpdateApplier
 
     private void Replace(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
-        string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.Checksum), action.Checksum, "replacement");
         string destination = GetDestination(action.Destination);
+        string? desinationMd5 = File.Exists(destination) ? ChecksumUtils.ComputeMd5(destination) : null;
+
+        if (ChecksumUtils.Md5Equals(desinationMd5, action.Checksum))
+            // No need to replace or download
+            return;
+
+        string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.Checksum), action.Checksum, "replacement");
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
     }
@@ -112,6 +118,10 @@ public sealed class PatchUpdateApplier
         {
             if (!File.Exists(destination))
                 throw new PatchUpdateException($"Cannot patch missing destination: {action.Destination}");
+            
+            if (ChecksumUtils.Md5Equals(ChecksumUtils.ComputeMd5(destination), action.Checksum))
+                // Already patched
+                return;
 
             VerifyFileChecksum(destination, action.SourceChecksum, "patch source");
 

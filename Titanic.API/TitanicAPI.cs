@@ -164,7 +164,7 @@ namespace Titanic.API
              (string endpoint, Dictionary<string, string> headers = null)
         {
             Debug.Print("TitanicAPI: DELETE " + endpoint);
-            return this.Send<T>(HttpMethodType.PUT, endpoint, null, headers);
+            return this.Send<T>(HttpMethodType.DELETE, endpoint, null, headers);
         }
         
         public byte[] Download(string url)

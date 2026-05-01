@@ -101,9 +101,36 @@ public class WebClientInterface : IHttpInterface
         }
     }
 
+    public byte[] RequestBytes(HttpMethodType methodType, string endpoint, byte[]? content, Dictionary<string, string>? headers)
+    {
+        lock (_client)
+        {
+            this.PrepareRequest(headers);
+            return methodType switch
+            {
+                HttpMethodType.GET => this._client.DownloadData(endpoint),
+                HttpMethodType.POST => this._client.UploadData(endpoint, content ?? []),
+                HttpMethodType.PUT => this._client.UploadData(endpoint, "PUT", content ?? []),
+                HttpMethodType.PATCH => throw new NotImplementedException(),
+                HttpMethodType.DELETE => this._client.UploadData(endpoint, "DELETE", content ?? []),
+                _ => throw new ArgumentOutOfRangeException(nameof(methodType), methodType, null)
+            };
+        }
+    }
+
+    public void RequestEmpty(HttpMethodType methodType, string endpoint, string? content, Dictionary<string, string>? headers)
+    {
+        RequestString(methodType, endpoint, content, headers);
+    }
+
+    public void RequestEmpty(HttpMethodType methodType, string endpoint, byte[]? content, Dictionary<string, string>? headers)
+    {
+        RequestBytes(methodType, endpoint, content, headers);
+    }
+
     public void AddDefaultHeader(string key, string value)
     {
-        this._defaultHeaders.Add(key, value);
+        this._defaultHeaders[key] = value;
     }
 
     public void RemoveDefaultHeader(string key)

@@ -246,7 +246,7 @@ namespace Titanic.API
 
         public byte[] Download(string url)
         {
-            return this._http.RequestBytes(HttpMethodType.GET, url, null, null);
+            return this._http.RequestBytes(HttpMethodType.GET, url, (string)null, null);
         }
 
         public void EnsureValidAccessToken()

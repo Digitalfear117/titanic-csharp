@@ -10,8 +10,8 @@ ModdedClientInformation client = new()
 {
     ClientIdentifier = "retrogecko",
     VersionKind = OsuVersionKind.BuildNumber,
-    InstalledStream = "linux-x64",
-    InstalledVersion = "b520",
+    InstalledStream = "net10.0-linux-x64",
+    InstalledVersion = "b595",
 };
 
 UpdateManagerSettings settings = new()

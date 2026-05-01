@@ -50,7 +50,7 @@ public static class UpdateManifestValidator
                 RequireDestination(action);
                 RequireChecksum(action.SourceChecksum, "source_checksum", type);
                 RequireChecksum(action.PatchChecksum, "patch_checksum", type);
-                RequireChecksum(action.ResultChecksum, "result_checksum", type);
+                RequireChecksum(action.Checksum, "checksum", type);
 
                 if (!string.Equals(action.Algorithm, SupportedPatchAlgorithm, StringComparison.OrdinalIgnoreCase))
                     throw new PatchUpdateException($"Unsupported patch algorithm: {action.Algorithm}");

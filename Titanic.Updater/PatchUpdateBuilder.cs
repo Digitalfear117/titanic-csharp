@@ -105,7 +105,7 @@ public sealed class PatchUpdateBuilder
                         Destination = newFile.Key,
                         SourceChecksum = oldHash,
                         PatchChecksum = patchPayload.Checksum,
-                        ResultChecksum = newHash,
+                        Checksum = newHash,
                         Algorithm = UpdateManifestValidator.SupportedPatchAlgorithm
                     });
                 }

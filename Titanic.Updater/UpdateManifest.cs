@@ -49,9 +49,6 @@ public class UpdateAction
     [JsonProperty("patch_checksum")]
     public string PatchChecksum { get; set; }
 
-    [JsonProperty("result_checksum")]
-    public string ResultChecksum { get; set; }
-
     [JsonProperty("checksum")]
     public string Checksum { get; set; }
 

@@ -115,27 +115,30 @@ public sealed class PatchUpdateApplier
 
             VerifyFileChecksum(destination, action.SourceChecksum, "patch source");
 
-            string patchFile = DownloadPayload(part, action.SourceUrlPatch, CreatePatchSourceName(action.SourceChecksum, action.ResultChecksum), action.PatchChecksum, "patch");
+            string patchName = CreatePatchSourceName(action.SourceChecksum, action.Checksum);
+            string patchFile = DownloadPayload(part, action.SourceUrlPatch, patchName, action.PatchChecksum, "patch");
 
             string result = Path.Combine(_stagingDir, Guid.NewGuid().ToString("N") + ".patched");
             new BSPatcher().Patch(destination, result, patchFile);
-            VerifyFileChecksum(result, action.ResultChecksum, "patch result");
+            VerifyFileChecksum(result, action.Checksum, "patch result");
 
             BackupDestination(destination, backupRoot, backups);
             MoveFileAndReplace(result, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
         }
-        catch (Exception patchException)
+        catch
         {
             try
             {
-                string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.ResultChecksum), action.ResultChecksum, "full patch fallback");
+                string sourceName = CreateFileSourceName(action.Checksum);
+                string temp = DownloadPayload(part, action.SourceUrlFull, sourceName, action.Checksum, "full patch fallback");
                 BackupDestination(destination, backupRoot, backups);
                 MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
             }
             catch (Exception fallbackException)
             {
+                // we're fucked type shit
                 throw new PatchUpdateException(
-                    $"Patch action failed for '{action.Destination}' and full payload fallback also failed. Patch failure: {patchException.Message}. Fallback failure: {fallbackException.Message}",
+                    $"Patch action failed for '{action.Destination}' and full payload fallback also failed.",
                     fallbackException
                 );
             }

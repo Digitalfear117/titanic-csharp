@@ -7,6 +7,7 @@ C# libraries for [Titanic!](https://osu.titanic.sh)
 | Package           | Description                             |
 |-------------------|-----------------------------------------|
 | `Titanic.API`     | API wrapper for Titanic!                |
+| `Titanic.CDN`     | CDN API wrapper for Titanic!            |
 | `Titanic.Updater` | Updater library for modded osu! clients |
 
 ## Installation
@@ -15,6 +16,7 @@ Add the NuGet packages or reference the projects directly:
 
 ```
 dotnet add package Titanic.API
+dotnet add package Titanic.CDN
 dotnet add package Titanic.Updater
 ```
 
@@ -76,4 +78,27 @@ if (update != null)
     Console.WriteLine($"Update downloaded to {downloadedUpdate.Path}");
     manager.InstallClientUpdate(downloadedUpdate);
 }
+```
+
+## Titanic.CDN Usage
+
+```csharp
+using Titanic.CDN;
+using Titanic.CDN.Requests;
+
+var cdn = new TitanicCDN();
+
+var health = new GetHealthRequest().BlockingPerform(cdn);
+var data = new DownloadObjectRequest("public/client/release-1.0.0.zip").BlockingPerform(cdn);
+
+// The following requests require an access key
+cdn.AccessKey = "your-access-key";
+
+var session = new GetSessionRequest().BlockingPerform(cdn);
+var files = new ListFilesRequest("public/client/", limit: 100).BlockingPerform(cdn);
+
+var uploadRequest = new UploadFileRequest("public/client/release-1.0.0.zip", data, contentType: "application/octet-stream");
+var upload = uploadRequest.BlockingPerform(cdn);
+
+new DeleteCDNAdminFileRequest("public/client/release-1.0.0.zip").BlockingPerform(cdn);
 ```

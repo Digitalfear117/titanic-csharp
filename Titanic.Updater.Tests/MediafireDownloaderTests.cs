@@ -1,3 +1,4 @@
+using Titanic.Helpers.Downloaders;
 using Titanic.Helpers.Http;
 using Xunit;
 

@@ -1,9 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text.RegularExpressions;
+using Titanic.Helpers.Http;
 
-namespace Titanic.API.Http;
+namespace Titanic.Helpers.Downloaders;
 
 public class MediaFireDownloader
 {

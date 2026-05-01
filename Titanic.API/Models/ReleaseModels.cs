@@ -166,4 +166,22 @@ namespace Titanic.API.Models
         [JsonProperty("updated_at")]
         public DateTime UpdatedAt { get; set; }
     }
+
+    public class ModdedReleaseUpdateModel
+    {
+        [JsonProperty("client")]
+        public ModdedReleaseModel Client { get; set; }
+
+        [JsonProperty("stream")]
+        public string Stream { get; set; }
+
+        [JsonProperty("source_release")]
+        public ModdedReleaseEntryModel SourceRelease { get; set; }
+
+        [JsonProperty("target_release")]
+        public ModdedReleaseEntryModel TargetRelease { get; set; }
+
+        [JsonProperty("path")]
+        public List<ModdedReleaseEntryModel> Path { get; set; }
+    }
 }

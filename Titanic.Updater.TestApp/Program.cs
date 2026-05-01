@@ -27,7 +27,7 @@ DownloadedUpdate downloadedUpdate;
 
 if (update != null)
 {
-    if (!update.IsExtractable)
+    if (!update.HasPatchUpdatePath && !update.IsExtractable)
     {
         Console.WriteLine($"Update found: {update.Version}, but not extractable");
         return;

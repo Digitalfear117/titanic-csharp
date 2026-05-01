@@ -109,7 +109,7 @@ public class UpdateManager : IDisposable
 
             string filename = GetManifestFilename(pathUpdate, i);
             if (string.IsNullOrEmpty(filename))
-                filename = $"{i:D3}-{SanitizeFilename(pathUpdate.Version)}-update.json";
+                filename = $"{i:D3}_{SanitizeFilename(pathUpdate.Version)}_update.json";
 
             string path = Path.Combine(updatePath, filename);
             UpdateManifest manifest;
@@ -153,13 +153,16 @@ public class UpdateManager : IDisposable
 
     private static string GetManifestFilename(UpdateInformation update, int index)
     {
-        Uri uri = new(update.DownloadUrl);
-        string name = Path.GetFileName(uri.AbsolutePath);
+        string path = update.DownloadUrl;
+        if (Uri.TryCreate(update.DownloadUrl, UriKind.RelativeOrAbsolute, out Uri? uri))
+            path = uri.IsAbsoluteUri ? uri.AbsolutePath : uri.OriginalString;
+
+        string name = Path.GetFileName(path);
 
         if (string.IsNullOrEmpty(name))
             name = "update.json";
 
-        return $"{index:D3}-{SanitizeFilename(update.Version)}-{SanitizeFilename(name)}";
+        return $"{SanitizeFilename(update.Version)}_{SanitizeFilename(name)}";
     }
 
     private static string SanitizeFilename(string value)

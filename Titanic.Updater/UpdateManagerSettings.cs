@@ -28,6 +28,21 @@ public class UpdateManagerSettings
     public bool IncludeClientIdentifierInOutputPath = false;
 
     /// <summary>
+    /// Prefer update_url patch packages when the API provides an ordered update path.
+    /// </summary>
+    public bool PreferPatchUpdates = true;
+
+    /// <summary>
+    /// Fall back to the target release's full archive if a patch update cannot be installed.
+    /// </summary>
+    public bool FallbackToFullArchive = true;
+
+    /// <summary>
+    /// Validate MD5 checksums declared by patch update manifests.
+    /// </summary>
+    public bool ValidatePatchUpdateChecksums = true;
+
+    /// <summary>
     /// The value to set ZipConstants.DefaultCodePage to. Leave as default (0 on CoreCLR, null on framework) if this doesn't break your client.
     /// Set to null to disable setting this variable. Set to 0 to use the system's default code page (fixes exceptions on CoreCLR).
     /// </summary>

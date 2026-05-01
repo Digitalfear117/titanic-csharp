@@ -21,7 +21,7 @@ namespace Titanic.API.Requests
 
         protected override List<MessageModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<MessageModel>>($"/chat/channels/{ChannelEncoded}/messages?offset={Offset}&limit={Limit}", null);
+            return api.GetList<MessageModel>($"/chat/channels/{ChannelEncoded}/messages?offset={Offset}&limit={Limit}", null);
         }
     }
 }

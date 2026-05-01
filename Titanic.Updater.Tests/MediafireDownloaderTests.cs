@@ -1,4 +1,5 @@
-using Titanic.API.Http;
+using Titanic.Helpers.Downloaders;
+using Titanic.Helpers.Http;
 using Xunit;
 
 namespace Titanic.Updater.Tests;

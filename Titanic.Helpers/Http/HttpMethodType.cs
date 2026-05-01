@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Titanic.API.Http;
+namespace Titanic.Helpers.Http;
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public enum HttpMethodType

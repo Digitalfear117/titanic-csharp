@@ -7,7 +7,7 @@ namespace Titanic.API.Requests
     {
         protected override List<GroupModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<GroupModel>>("/groups/");
+            return api.GetList<GroupModel>("/groups/");
         }
     }
 }

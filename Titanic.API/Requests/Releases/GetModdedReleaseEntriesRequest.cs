@@ -18,7 +18,7 @@ namespace Titanic.API.Requests
 
         protected override List<ModdedReleaseEntryModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<ModdedReleaseEntryModel>>($"/releases/modded/{Identifier}/entries?offset={Offset}&limit={Limit}");
+            return api.GetList<ModdedReleaseEntryModel>($"/releases/modded/{Identifier}/entries?offset={Offset}&limit={Limit}");
         }
     }
 }

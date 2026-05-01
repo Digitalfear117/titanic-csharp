@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<FavouriteModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<FavouriteModel>>($"/users/{UserId}/favourites");
+            return api.GetList<FavouriteModel>($"/users/{UserId}/favourites");
         }
     }
 }

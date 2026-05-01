@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net20;net35;net40;net45;net48;net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>Titanic.Helpers</RootNamespace>
+    <AssemblyName>Titanic.Helpers</AssemblyName>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsTrimmable>true</IsTrimmable>
+
+    <PackageId>Titanic.Helpers</PackageId>
+    <Authors>Levi (Lekuru)</Authors>
+    <Description>Shared helpers for Titanic! libraries</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/osuTitanic/titanic-csharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/osuTitanic/titanic-csharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$(TargetFramework) != 'net40' and '$(TargetFramework)' != 'net35' and $(TargetFramework) != 'net20'">
+    <DefineConstants>SUPPORT_HTTPCLIENT</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48' or '$(TargetFramework)' == 'net45'">
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+  </ItemGroup>
+
+</Project>

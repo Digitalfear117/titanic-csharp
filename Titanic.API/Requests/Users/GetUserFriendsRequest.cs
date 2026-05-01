@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<UserModelCompact> Execute(TitanicAPI api)
         {
-            return api.Get<List<UserModelCompact>>($"/users/{UserId}/friends");
+            return api.GetList<UserModelCompact>($"/users/{UserId}/friends");
         }
     }
 }

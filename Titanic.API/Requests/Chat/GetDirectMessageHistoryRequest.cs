@@ -18,7 +18,7 @@ namespace Titanic.API.Requests
 
         protected override List<PrivateMessageModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<PrivateMessageModel>>($"/chat/dms/{TargetId}/messages?offset={Offset}&limit={Limit}");
+            return api.GetList<PrivateMessageModel>($"/chat/dms/{TargetId}/messages?offset={Offset}&limit={Limit}");
         }
     }
 }

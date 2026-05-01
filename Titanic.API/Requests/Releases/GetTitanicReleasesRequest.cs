@@ -7,7 +7,7 @@ namespace Titanic.API.Requests
     {
         protected override List<TitanicReleaseModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<TitanicReleaseModel>>("/releases/");
+            return api.GetList<TitanicReleaseModel>("/releases/");
         }
     }
 }

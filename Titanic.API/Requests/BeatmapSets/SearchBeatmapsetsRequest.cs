@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<BeatmapSetModel> Execute(TitanicAPI api)
         {
-            return api.Post<List<BeatmapSetModel>>("/beatmapsets/search", SearchParams);
+            return api.PostList<BeatmapSetModel>("/beatmapsets/search", SearchParams);
         }
     }
 }

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net20;net35;net40;net45;net48;net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>Titanic.CDN</RootNamespace>
+    <AssemblyName>Titanic.CDN</AssemblyName>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsTrimmable>true</IsTrimmable>
+
+    <PackageId>Titanic.CDN</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Levi (Lekuru)</Authors>
+    <Description>API wrapper for cdn.titanic.sh</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/osuTitanic/titanic-csharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/osuTitanic/titanic-csharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Titanic.API\Titanic.API.csproj" />
+    <ProjectReference Include="..\Titanic.Helpers\Titanic.Helpers.csproj" />
+  </ItemGroup>
+
+</Project>

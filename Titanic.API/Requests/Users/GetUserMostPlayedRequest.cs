@@ -18,7 +18,7 @@ namespace Titanic.API.Requests
 
         protected override List<UserBeatmapPlaysModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<UserBeatmapPlaysModel>>($"/users/{UserId}/plays?offset={Offset}&limit={Limit}");
+            return api.GetList<UserBeatmapPlaysModel>($"/users/{UserId}/plays?offset={Offset}&limit={Limit}");
         }
     }
 }

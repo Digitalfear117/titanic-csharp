@@ -1,6 +1,6 @@
 using System;
 
-namespace Titanic.API.Http;
+namespace Titanic.Helpers.Http;
 
 public static class HttpInterfaceFactory
 {

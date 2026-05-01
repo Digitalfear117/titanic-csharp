@@ -7,7 +7,7 @@ namespace Titanic.API.Requests
     {
         protected override List<ForumBookmarkModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<ForumBookmarkModel>>("/forum/bookmarks");
+            return api.GetList<ForumBookmarkModel>("/forum/bookmarks");
         }
     }
 }

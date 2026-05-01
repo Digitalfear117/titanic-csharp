@@ -34,9 +34,6 @@ public class UpdateAction
     [JsonProperty("type")]
     public string Type { get; set; }
 
-    [JsonProperty("source")]
-    public string Source { get; set; }
-
     [JsonProperty("source_url_patch")]
     public string SourceUrlPatch { get; set; }
 

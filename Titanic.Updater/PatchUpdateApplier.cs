@@ -77,7 +77,7 @@ public sealed class PatchUpdateApplier
 
     private void Replace(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
-        string temp = DownloadPayload(part, action.SourceUrlFull, action.Source, action.Checksum, "replacement");
+        string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.Checksum), action.Checksum, "replacement");
         string destination = GetDestination(action.Destination);
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
@@ -98,7 +98,7 @@ public sealed class PatchUpdateApplier
         if (File.Exists(destination))
             return;
 
-        string temp = DownloadPayload(part, action.SourceUrlFull, action.Source, action.Checksum, "stored file");
+        string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.Checksum), action.Checksum, "stored file");
 
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
@@ -115,7 +115,7 @@ public sealed class PatchUpdateApplier
 
             VerifyFileChecksum(destination, action.SourceChecksum, "patch source");
 
-            string patchFile = DownloadPayload(part, action.SourceUrlPatch, action.Source, action.PatchChecksum, "patch");
+            string patchFile = DownloadPayload(part, action.SourceUrlPatch, CreatePatchSourceName(action.SourceChecksum, action.ResultChecksum), action.PatchChecksum, "patch");
 
             string result = Path.Combine(_stagingDir, Guid.NewGuid().ToString("N") + ".patched");
             new BSPatcher().Patch(destination, result, patchFile);
@@ -358,5 +358,10 @@ public sealed class PatchUpdateApplier
     private static string CreateFileSourceName(string hash)
     {
         return $"f_{hash}";
+    }
+
+    private static string CreatePatchSourceName(string sourceHash, string destinationHash)
+    {
+        return $"p_{sourceHash}_{destinationHash}";
     }
 }

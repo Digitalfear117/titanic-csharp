@@ -29,7 +29,6 @@ public static class UpdateManifestValidator
         switch (type)
         {
             case "replace":
-                RequirePayloadSource(action);
                 RequireSourceUrl(action.SourceUrlFull, "source_url_full", type);
                 RequireDestination(action);
                 RequireChecksum(action.Checksum, "checksum", type);
@@ -40,14 +39,12 @@ public static class UpdateManifestValidator
                 break;
 
             case "store_if_not_exists":
-                RequirePayloadSource(action);
                 RequireSourceUrl(action.SourceUrlFull, "source_url_full", type);
                 RequireDestination(action);
                 RequireChecksum(action.Checksum, "checksum", type);
                 break;
 
             case "patch":
-                RequirePayloadSource(action);
                 RequireSourceUrl(action.SourceUrlPatch, "source_url_patch", type);
                 RequireSourceUrl(action.SourceUrlFull, "source_url_full", type);
                 RequireDestination(action);
@@ -62,11 +59,6 @@ public static class UpdateManifestValidator
             default:
                 throw new PatchUpdateException($"Unsupported update action type: {action.Type}");
         }
-    }
-
-    private static void RequirePayloadSource(UpdateAction action)
-    {
-        UpdatePathUtil.EnsureRelativeSafePath(action.Source, "Source");
     }
 
     private static void RequireDestination(UpdateAction action)

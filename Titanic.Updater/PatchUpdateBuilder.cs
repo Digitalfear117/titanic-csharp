@@ -100,7 +100,6 @@ public sealed class PatchUpdateBuilder
                     manifest.Actions.Add(new UpdateAction
                     {
                         Type = "patch",
-                        Source = patchPayload.Source,
                         SourceUrlPatch = patchPayload.Url,
                         SourceUrlFull = fullPayload.Url,
                         Destination = newFile.Key,
@@ -168,7 +167,6 @@ public sealed class PatchUpdateBuilder
         manifest.Actions.Add(new UpdateAction
         {
             Type = type,
-            Source = payload.Source,
             SourceUrlFull = payload.Url,
             Destination = destination,
             Checksum = payload.Checksum

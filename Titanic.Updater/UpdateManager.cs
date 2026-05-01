@@ -1,10 +1,8 @@
-using System.Linq;
 using System.Reflection;
 using ICSharpCode.SharpZipLib.Zip;
 using Titanic.API;
 using Titanic.API.Models;
 using Titanic.API.Requests;
-using Titanic.Updater.Versioning;
 
 namespace Titanic.Updater;
 
@@ -30,38 +28,23 @@ public class UpdateManager : IDisposable
         if (this._settings.ReplaceCurrentExecutable)
         {
             string processPath = ExecutablePath + ".old";
-            if(File.Exists(processPath))
+            if (File.Exists(processPath))
                 File.Delete(processPath);
         }
     }
 
     public UpdateInformation? CheckUpdateForClient(ModdedClientInformation clientInfo)
     {
-        GetModdedReleaseEntriesRequest request = new(clientInfo.ClientIdentifier);
-        
-        IEnumerable<ModdedReleaseEntryModel> entries = request.BlockingPerform(this._api)
-            .OrderByDescending(e => e.Id);
-        
-        if (clientInfo.InstalledStream != null)
-            entries = entries.Where(e => e.Stream == clientInfo.InstalledStream);
+        GetModdedReleaseUpdateRequest request = new(
+            clientInfo.ClientIdentifier,
+            version: clientInfo.InstalledVersion,
+            stream: clientInfo.InstalledStream
+        );
+        ModdedReleaseUpdateModel update = request.BlockingPerform(this._api);
 
-        if (clientInfo.InstalledVersion == null)
-        {
-            ModdedReleaseEntryModel? entry = entries.FirstOrDefault();
-            if (entry == null)
-                return null;
-            return new UpdateInformation(entry, clientInfo.ClientIdentifier);
-        }
-
-        OsuVersion currentVersion = OsuVersion.Parse(clientInfo.InstalledVersion, clientInfo.VersionKind);
-        foreach (ModdedReleaseEntryModel entry in entries)
-        {
-            OsuVersion version = OsuVersion.Parse(entry.Version, clientInfo.VersionKind);
-            if (currentVersion.IsOlderThan(version))
-                return new UpdateInformation(entry, clientInfo.ClientIdentifier);
-        }
-
-        return null;
+        return update.TargetRelease == null
+            ? null
+            : new UpdateInformation(update.TargetRelease, clientInfo.ClientIdentifier);
     }
 
     public DownloadedUpdate DownloadClientUpdate(UpdateInformation update)
@@ -82,10 +65,10 @@ public class UpdateManager : IDisposable
             Path = path,
             ClientIdentifier = update.ClientIdentifier,
         };
-        
+
         if (File.Exists(path))
             return downloadedUpdate;
-        
+
         byte[] data = this._api.Download(update.DownloadUrl);
         File.WriteAllBytes(path, data);
 
@@ -99,7 +82,7 @@ public class UpdateManager : IDisposable
             Directory.CreateDirectory(staging);
 
         ZipUtil.Extract(update.Path, staging);
-        
+
         if (this._settings.ReplaceCurrentExecutable)
         {
             string processPath = ExecutablePath;
@@ -120,12 +103,12 @@ public class UpdateManager : IDisposable
         foreach (string file in files)
         {
             string dest = Path.Combine(outputDir, file.Replace(staging + '/', ""));
-            if(File.Exists(dest))
+            if (File.Exists(dest))
                 File.Delete(dest);
-            
+
             File.Move(file, dest);
         }
-        
+
 #if NET10_0_OR_GREATER
         string osuExecutable = Path.Combine(outputDir, "osu!");
         if (OperatingSystem.IsLinux() && File.Exists(osuExecutable))
@@ -133,7 +116,7 @@ public class UpdateManager : IDisposable
             UnixFileMode fileMode = File.GetUnixFileMode(osuExecutable);
             fileMode |= UnixFileMode.GroupExecute | UnixFileMode.OtherExecute | UnixFileMode.UserExecute;
             File.SetUnixFileMode(osuExecutable, fileMode);
-        } 
+        }
 #endif
 
         this._settings.Exit?.Invoke();

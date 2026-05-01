@@ -16,7 +16,7 @@ namespace Titanic.API.Requests
 
         protected override List<RankingEntryModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<RankingEntryModel>>($"/rankings/kudosu?offset={Offset}&limit={Limit}");
+            return api.GetList<RankingEntryModel>($"/rankings/kudosu?offset={Offset}&limit={Limit}");
         }
     }
 }

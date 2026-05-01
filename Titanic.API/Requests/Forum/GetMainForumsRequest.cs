@@ -7,7 +7,7 @@ namespace Titanic.API.Requests
     {
         protected override List<ForumModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<ForumModel>>("/forum/");
+            return api.GetList<ForumModel>("/forum/");
         }
     }
 }

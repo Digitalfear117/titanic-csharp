@@ -20,7 +20,7 @@ namespace Titanic.API.Requests
             string endpoint = $"/multiplayer/{MatchId}/events";
             if (After.HasValue)
                 endpoint += $"?after={After.Value:o}";
-            return api.Get<List<MultiplayerMatchEventModel>>(endpoint);
+            return api.GetList<MultiplayerMatchEventModel>(endpoint);
         }
     }
 }

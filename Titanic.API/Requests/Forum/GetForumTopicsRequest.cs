@@ -18,7 +18,7 @@ namespace Titanic.API.Requests
 
         protected override List<ForumTopicModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<ForumTopicModel>>($"/forum/{ForumId}/topics?offset={Offset}&limit={Limit}");
+            return api.GetList<ForumTopicModel>($"/forum/{ForumId}/topics?offset={Offset}&limit={Limit}");
         }
     }
 }

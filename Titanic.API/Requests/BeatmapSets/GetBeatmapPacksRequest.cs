@@ -17,7 +17,7 @@ namespace Titanic.API.Requests
             string endpoint = string.IsNullOrEmpty(Category)
                 ? "/beatmapsets/packs"
                 : $"/beatmapsets/packs/{Category}";
-            return api.Get<List<BeatmapPackModel>>(endpoint);
+            return api.GetList<BeatmapPackModel>(endpoint);
         }
     }
 }

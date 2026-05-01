@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<AchievementModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<AchievementModel>>($"/users/{UserId}/achievements");
+            return api.GetList<AchievementModel>($"/users/{UserId}/achievements");
         }
     }
 }

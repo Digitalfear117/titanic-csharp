@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<KudosuModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<KudosuModel>>($"/beatmapsets/{SetId}/kudosu");
+            return api.GetList<KudosuModel>($"/beatmapsets/{SetId}/kudosu");
         }
     }
 }

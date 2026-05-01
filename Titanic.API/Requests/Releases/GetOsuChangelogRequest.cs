@@ -16,7 +16,7 @@ namespace Titanic.API.Requests
 
         protected override List<OsuChangelogModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<OsuChangelogModel>>($"/releases/official/changelog?stream={Stream}&limit={Limit}");
+            return api.GetList<OsuChangelogModel>($"/releases/official/changelog?stream={Stream}&limit={Limit}");
         }
     }
 }

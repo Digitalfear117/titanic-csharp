@@ -25,7 +25,7 @@ namespace Titanic.API.Requests
             string endpoint = $"/rankings/{Order}/{Mode}?offset={Offset}&limit={Limit}";
             if (!string.IsNullOrEmpty(Country))
                 endpoint += $"&country={Country}";
-            return api.Get<List<RankingEntryModel>>(endpoint);
+            return api.GetList<RankingEntryModel>(endpoint);
         }
     }
 }

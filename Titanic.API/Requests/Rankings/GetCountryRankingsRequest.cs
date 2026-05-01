@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<CountryEntryModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<CountryEntryModel>>($"/rankings/country/{Mode}");
+            return api.GetList<CountryEntryModel>($"/rankings/country/{Mode}");
         }
     }
 }

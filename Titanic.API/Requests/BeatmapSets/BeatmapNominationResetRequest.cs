@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<BeatmapNominationModel> Execute(TitanicAPI api)
         {
-            return api.Delete<List<BeatmapNominationModel>>($"/beatmapsets/{SetId}/nominations");
+            return api.DeleteList<BeatmapNominationModel>($"/beatmapsets/{SetId}/nominations");
         }
     }
 }

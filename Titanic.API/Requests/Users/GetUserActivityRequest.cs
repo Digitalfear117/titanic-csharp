@@ -19,7 +19,7 @@ namespace Titanic.API.Requests
             string endpoint = Mode.HasValue
                 ? $"/users/{UserId}/activity/{Mode.Value}"
                 : $"/users/{UserId}/activity";
-            return api.Get<List<UserActivityModel>>(endpoint);
+            return api.GetList<UserActivityModel>(endpoint);
         }
     }
 }

@@ -184,11 +184,11 @@ internal static class Program
         Required:
           --old <dir>                    Directory containing the source client version.
           --new <dir>                    Directory containing the target client version.
-          --output <dir>                 Directory where update.json and payload files are written.
+          --output <dir>                 Directory where the manifest and payload files are written.
           --base-url <url>               Public URL where the output directory contents will be hosted.
-          --client <id>                  Client identifier written to update.json.
-          --from-version <version>       Source version written to update.json.
-          --to-version <version>         Target version written to update.json.
+          --client <id>                  Client identifier written to the manifest.
+          --from-version <version>       Source version written to the manifest.
+          --to-version <version>         Target version written to the manifest.
 
         Options:
           --executable <path>              Relative executable path for automatic MD5 checksums. Default: osu!.exe

@@ -156,7 +156,7 @@ public class UpdateManager : IDisposable
         Uri uri = new(update.DownloadUrl);
         string name = Path.GetFileName(uri.AbsolutePath);
 
-        if (string.IsNullOrEmpty(name) || !name.Contains("."))
+        if (string.IsNullOrEmpty(name))
             name = "update.json";
 
         return $"{index:D3}-{SanitizeFilename(update.Version)}-{SanitizeFilename(name)}";

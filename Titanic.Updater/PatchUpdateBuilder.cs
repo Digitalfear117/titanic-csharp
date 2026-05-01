@@ -117,7 +117,7 @@ public sealed class PatchUpdateBuilder
                 }
             }
 
-            string manifestPath = Path.Combine(outputDirectory, UpdateManifestReader.ManifestEntryName);
+            string manifestPath = Path.Combine(outputDirectory, CreateManifestFilename(manifest));
             WriteManifest(manifestPath, manifest);
 
             return new PatchUpdateBuildResult
@@ -239,6 +239,22 @@ public sealed class PatchUpdateBuilder
     private static string CreateFileSourceName(string hash)
     {
         return $"f_{hash}";
+    }
+
+    private static string CreateManifestFilename(UpdateManifest manifest)
+    {
+        string sourceChecksum = manifest.From == null ? string.Empty : manifest.From.ExecutableChecksum;
+        string targetChecksum = manifest.To == null ? string.Empty : manifest.To.ExecutableChecksum;
+
+        if (string.IsNullOrEmpty(sourceChecksum))
+            sourceChecksum = "unknown";
+
+        if (string.IsNullOrEmpty(targetChecksum))
+            targetChecksum = "unknown";
+
+        string filename = $"u_{sourceChecksum}_{targetChecksum}";
+        UpdatePathUtil.EnsureRelativeSafePath(filename, "Manifest");
+        return filename;
     }
 }
 

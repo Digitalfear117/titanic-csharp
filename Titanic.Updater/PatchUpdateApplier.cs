@@ -1,6 +1,6 @@
-using ICSharpCode.SharpZipLib.Core;
-using ICSharpCode.SharpZipLib.Zip;
+using Titanic.API;
 using Titanic.Helpers.Patching;
+using System.Text;
 
 namespace Titanic.Updater;
 
@@ -10,13 +10,15 @@ public sealed class PatchUpdateApplier
     private readonly string _outputDir;
     private readonly string _stagingDir;
     private readonly string? _executablePath;
+    private readonly Func<string, byte[]> _download;
 
-    public PatchUpdateApplier(UpdateManagerSettings settings, string outputDir, string stagingDir, string? executablePath = null)
+    public PatchUpdateApplier(UpdateManagerSettings settings, string outputDir, string stagingDir, string? executablePath = null, Func<string, byte[]>? download = null)
     {
         _settings = settings;
         _outputDir = outputDir;
         _stagingDir = stagingDir;
         _executablePath = executablePath;
+        _download = download ?? DownloadWithTitanicApi;
     }
 
     public void Apply(IList<DownloadedUpdatePart> parts)
@@ -44,22 +46,19 @@ public sealed class PatchUpdateApplier
 
     private void ApplyPart(DownloadedUpdatePart part, string backupRoot, Dictionary<string, string?> backups)
     {
-        using FileStream fs = File.OpenRead(part.Path);
-        using ZipFile zip = new(fs);
-
-        UpdateManifest manifest = UpdateManifestReader.ReadFromZip(zip);
-        UpdateManifestValidator.Validate(manifest, part.ClientIdentifier, zip);
+        UpdateManifest manifest = part.Manifest ?? UpdateManifestReader.ReadFromFile(part.Path);
+        UpdateManifestValidator.Validate(manifest, part.ClientIdentifier);
 
         for (int i = 0; i < manifest.Actions.Count; i++)
-            ApplyAction(zip, manifest.Actions[i], backupRoot, backups);
+            ApplyAction(part, manifest.Actions[i], backupRoot, backups);
     }
 
-    private void ApplyAction(ZipFile zip, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
+    private void ApplyAction(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
         switch (action.Type)
         {
             case "replace":
-                Replace(zip, action, backupRoot, backups);
+                Replace(part, action, backupRoot, backups);
                 break;
 
             case "delete":
@@ -67,20 +66,18 @@ public sealed class PatchUpdateApplier
                 break;
 
             case "store_if_not_exists":
-                StoreIfNotExists(zip, action, backupRoot, backups);
+                StoreIfNotExists(part, action, backupRoot, backups);
                 break;
 
             case "patch":
-                Patch(zip, action, backupRoot, backups);
+                Patch(part, action, backupRoot, backups);
                 break;
         }
     }
 
-    private void Replace(ZipFile zip, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
+    private void Replace(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
-        string temp = ExtractSource(zip, action.Source);
-        VerifyFileChecksum(temp, action.Checksum, "replacement");
-
+        string temp = DownloadPayload(part, action, action.Checksum, "replacement");
         string destination = GetDestination(action.Destination);
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
@@ -95,20 +92,19 @@ public sealed class PatchUpdateApplier
             File.Delete(destination);
     }
 
-    private void StoreIfNotExists(ZipFile zip, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
+    private void StoreIfNotExists(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
         string destination = GetDestination(action.Destination);
         if (File.Exists(destination))
             return;
 
-        string temp = ExtractSource(zip, action.Source);
-        VerifyFileChecksum(temp, action.Checksum, "stored file");
+        string temp = DownloadPayload(part, action, action.Checksum, "stored file");
 
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
     }
 
-    private void Patch(ZipFile zip, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
+    private void Patch(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
         string destination = GetDestination(action.Destination);
         if (!File.Exists(destination))
@@ -116,8 +112,7 @@ public sealed class PatchUpdateApplier
 
         VerifyFileChecksum(destination, action.SourceChecksum, "patch source");
 
-        string patchFile = ExtractSource(zip, action.Source);
-        VerifyFileChecksum(patchFile, action.PatchChecksum, "patch");
+        string patchFile = DownloadPayload(part, action, action.PatchChecksum, "patch");
 
         string result = Path.Combine(_stagingDir, Guid.NewGuid().ToString("N") + ".patched");
         new BSPatcher().Patch(destination, result, patchFile);
@@ -139,25 +134,89 @@ public sealed class PatchUpdateApplier
     }
 
     /// <summary>
-    /// Extracts a source file from the update archive to a temporary location.
+    /// Downloads a payload file to a temporary or cached location.
     /// </summary>
-    private string ExtractSource(ZipFile zip, string source)
+    private string DownloadPayload(DownloadedUpdatePart part, UpdateAction action, string expectedChecksum, string label)
     {
-        string normalized = UpdatePathUtil.NormalizeArchivePath(source);
-        ZipEntry? entry = zip.GetEntry(normalized);
-        if (entry == null || !entry.IsFile)
-            throw new PatchUpdateException($"Update archive is missing source entry: {source}");
+        Uri payloadUri = ResolvePayloadUri(part, action);
+        string outputPath = GetPayloadPath(part, action, payloadUri);
 
-        string outputPath = Path.Combine(_stagingDir, "_part_" + Guid.NewGuid().ToString("N"));
         string? directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        using Stream zipStream = zip.GetInputStream(entry);
-        using FileStream output = File.Create(outputPath);
-        StreamUtils.Copy(zipStream, output, new byte[4096]);
+        if (File.Exists(outputPath))
+        {
+            if (!_settings.ValidatePatchUpdateChecksums || FileChecksumMatches(outputPath, expectedChecksum))
+                return GetUsablePayloadPath(outputPath);
 
-        return outputPath;
+            File.Delete(outputPath);
+        }
+
+        byte[] payload = _download(payloadUri.ToString());
+        File.WriteAllBytes(outputPath, payload);
+        VerifyFileChecksum(outputPath, expectedChecksum, label);
+
+        return GetUsablePayloadPath(outputPath);
+    }
+
+    /// <summary>
+    /// If caching of patch payloads is enabled, copies the payload to a staging location and returns the new path.
+    /// </summary>
+    private string GetUsablePayloadPath(string payloadPath)
+    {
+        if (!_settings.CachePatchPayloads)
+            return payloadPath;
+
+        string stagingPath = Path.Combine(_stagingDir, "_payload_" + Guid.NewGuid().ToString("N"));
+        File.Copy(payloadPath, stagingPath, true);
+        return stagingPath;
+    }
+
+    private Uri ResolvePayloadUri(DownloadedUpdatePart part, UpdateAction action)
+    {
+        if (Uri.TryCreate(action.SourceUrl, UriKind.Absolute, out Uri? uri))
+            return ValidatePayloadUri(uri);
+
+        if (string.IsNullOrEmpty(part.ManifestUrl) || !Uri.TryCreate(part.ManifestUrl, UriKind.Absolute, out Uri? manifestUri))
+            throw new PatchUpdateException($"Action '{action.Type}' has a relative source_url but the manifest URL is not absolute");
+
+        return ValidatePayloadUri(new Uri(manifestUri, action.SourceUrl));
+    }
+
+    private static Uri ValidatePayloadUri(Uri uri)
+    {
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            throw new PatchUpdateException($"Unsupported payload URL scheme: {uri.Scheme}");
+
+        return uri;
+    }
+
+    /// <summary>
+    /// Gets the path to store the downloaded payload for a patch action.
+    /// If caching is enabled, this will be a cache path; otherwise, it will be a temporary path in the staging directory.
+    /// </summary>
+    private string GetPayloadPath(DownloadedUpdatePart part, UpdateAction action, Uri payloadUri)
+    {
+        if (!_settings.CachePatchPayloads)
+            return Path.Combine(_stagingDir, "_payload_" + Guid.NewGuid().ToString("N"));
+
+        string manifestKey = SanitizePathPart(string.IsNullOrEmpty(part.Version) ? part.Filename : part.Version);
+
+        string dataDirectoryPath = Path.Combine(_settings.DataDirectory, part.ClientIdentifier);
+        string payloadsPath = Path.Combine(dataDirectoryPath, "_payloads");
+        string cacheRoot = Path.Combine(payloadsPath, manifestKey);
+
+        string source = string.IsNullOrEmpty(action.Source)
+            ? ChecksumUtils.ComputeMd5(new MemoryStream(Encoding.UTF8.GetBytes(payloadUri.ToString())))
+            : action.Source;
+        return UpdatePathUtil.CombineSafe(cacheRoot, source);
+    }
+
+    private bool FileChecksumMatches(string path, string expectedChecksum)
+    {
+        string actual = ChecksumUtils.ComputeMd5(path);
+        return ChecksumUtils.Md5Equals(actual, expectedChecksum);
     }
 
     /// <summary>
@@ -216,6 +275,27 @@ public sealed class PatchUpdateApplier
         }
     }
 
+    /// <summary>
+    /// Sanitizes a string to be used as part of a file path by replacing invalid characters with underscores.
+    /// Example: "1/0/0" -> "1_0_0", "1:0:0" -> "1_0_0". If the input is null or empty, returns "unknown".
+    /// </summary>
+    private static string SanitizePathPart(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "unknown";
+
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+        char[] chars = value.ToCharArray();
+
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (Array.IndexOf(invalidChars, chars[i]) >= 0 || chars[i] == '/' || chars[i] == '\\')
+                chars[i] = '_';
+        }
+
+        return new string(chars);
+    }
+
     private static void MoveFileAndReplace(string source, string destination, string? executablePath)
     {
         string? directory = Path.GetDirectoryName(destination);
@@ -226,9 +306,7 @@ public sealed class PatchUpdateApplier
         if (File.Exists(destination))
         {
             string destinationFullPath = Path.GetFullPath(destination);
-            string executableFullPath = Path.GetFullPath(executablePath);
-
-            if (!string.IsNullOrEmpty(executablePath) && string.Equals(destinationFullPath, executableFullPath, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(executablePath) && string.Equals(destinationFullPath, Path.GetFullPath(executablePath), StringComparison.OrdinalIgnoreCase))
             {
                 string oldPath = destination + ".old";
                 if (File.Exists(oldPath))
@@ -249,5 +327,11 @@ public sealed class PatchUpdateApplier
     {
         if (Directory.Exists(path))
             Directory.Delete(path, true);
+    }
+
+    private static byte[] DownloadWithTitanicApi(string url)
+    {
+        using TitanicAPI api = new();
+        return api.Download(url);
     }
 }

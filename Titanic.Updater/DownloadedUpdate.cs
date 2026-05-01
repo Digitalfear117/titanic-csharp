@@ -25,4 +25,6 @@ public class DownloadedUpdatePart
     public string Filename;
     public string Path;
     public string Version;
+    public string ManifestUrl;
+    public UpdateManifest Manifest;
 }

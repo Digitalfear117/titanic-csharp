@@ -1,8 +1,6 @@
 #if NET8_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
-using ICSharpCode.SharpZipLib.Core;
-using ICSharpCode.SharpZipLib.Zip;
 using Titanic.Helpers.Patching;
 
 namespace Titanic.Updater;
@@ -16,34 +14,34 @@ public sealed class PatchUpdateBuilder
     public string ToExecutableChecksum { get; set; } = string.Empty;
     public List<string> StoreIfNotExistsPaths { get; } = new();
 
-    public UpdateManifest BuildFromDirectories(string oldDirectory, string newDirectory, string outputZipPath)
+    public PatchUpdateBuildResult BuildFromDirectories(string oldDirectory, string newDirectory, string outputDirectory, string baseUrl)
     {
-        // Create a temporary directory for storing patch files
+        Uri baseUri = CreateBaseUri(baseUrl);
+        Directory.CreateDirectory(outputDirectory);
+
         string tempDir = Path.Combine(Path.GetTempPath(), "titanic-patch-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
 
         try
         {
-            List<PackageEntry> entries = new();
+            List<PatchUpdatePayload> payloads = new();
             UpdateManifest manifest = CreateManifest();
 
             string[] oldFiles = Directory.Exists(oldDirectory) ? Directory.GetFiles(oldDirectory, "*", SearchOption.AllDirectories) : [];
             string[] newFiles = Directory.GetFiles(newDirectory, "*", SearchOption.AllDirectories);
 
-            // Build dictionaries for quick lookup by relative path
             Dictionary<string, string> oldByRelative = new(StringComparer.OrdinalIgnoreCase);
-            foreach (var t in oldFiles)
-                oldByRelative[UpdatePathUtil.GetRelativePath(oldDirectory, t)] = t;
+            foreach (string oldFile in oldFiles)
+                oldByRelative[UpdatePathUtil.GetRelativePath(oldDirectory, oldFile)] = oldFile;
 
             Dictionary<string, string> newByRelative = new(StringComparer.OrdinalIgnoreCase);
-            foreach (var t in newFiles)
-                newByRelative[UpdatePathUtil.GetRelativePath(newDirectory, t)] = t;
+            foreach (string newFile in newFiles)
+                newByRelative[UpdatePathUtil.GetRelativePath(newDirectory, newFile)] = newFile;
 
             foreach (KeyValuePair<string, string> oldFile in oldByRelative)
             {
                 if (!newByRelative.ContainsKey(oldFile.Key))
                 {
-                    // Add delete action for files that don't exist in the new version
                     manifest.Actions.Add(new UpdateAction
                     {
                         Type = "delete",
@@ -59,7 +57,7 @@ public sealed class PatchUpdateBuilder
                 if (!oldByRelative.TryGetValue(newFile.Key, out string? oldFile))
                 {
                     // Old version didn't have this file, so we need to add it
-                    AddFileAction(manifest, entries, storeIfNotExists ? "store_if_not_exists" : "replace", newFile.Key, newFile.Value);
+                    AddFileAction(manifest, payloads, outputDirectory, baseUri, storeIfNotExists ? "store_if_not_exists" : "replace", newFile.Key, newFile.Value);
                     continue;
                 }
 
@@ -72,7 +70,7 @@ public sealed class PatchUpdateBuilder
                 if (storeIfNotExists)
                 {
                     // The file has changed, but we want to store it only if it doesn't exist on the client
-                    AddFileAction(manifest, entries, "store_if_not_exists", newFile.Key, newFile.Value);
+                    AddFileAction(manifest, payloads, outputDirectory, baseUri, "store_if_not_exists", newFile.Key, newFile.Value);
                     continue;
                 }
 
@@ -86,15 +84,21 @@ public sealed class PatchUpdateBuilder
                 if (patchInfo.Length < newInfo.Length)
                 {
                     // Add patch action if the patch is smaller than the new file
-                    string sourceName = Guid.NewGuid().ToString("N");
-                    entries.Add(new PackageEntry(sourceName, patchPath));
+                    string sourceName = CreatePatchSourceName(oldHash, newHash);
+
+                    PatchUpdatePayload payload = CopyPayload(
+                        outputDirectory, baseUri, sourceName,
+                        patchPath, ChecksumUtils.ComputeMd5(patchPath)
+                    );
+                    payloads.Add(payload);
                     manifest.Actions.Add(new UpdateAction
                     {
                         Type = "patch",
-                        Source = sourceName,
+                        Source = payload.Source,
+                        SourceUrl = payload.Url,
                         Destination = newFile.Key,
                         SourceChecksum = oldHash,
-                        PatchChecksum = ChecksumUtils.ComputeMd5(patchPath),
+                        PatchChecksum = payload.Checksum,
                         ResultChecksum = newHash,
                         Algorithm = UpdateManifestValidator.SupportedPatchAlgorithm
                     });
@@ -103,12 +107,19 @@ public sealed class PatchUpdateBuilder
                 {
                     // Patch is larger than the new file, so we might as well just replace it
                     File.Delete(patchPath);
-                    AddFileAction(manifest, entries, "replace", newFile.Key, newFile.Value);
+                    AddFileAction(manifest, payloads, outputDirectory, baseUri, "replace", newFile.Key, newFile.Value);
                 }
             }
 
-            WritePackage(outputZipPath, manifest, entries);
-            return manifest;
+            string manifestPath = Path.Combine(outputDirectory, UpdateManifestReader.ManifestEntryName);
+            WriteManifest(manifestPath, manifest);
+
+            return new PatchUpdateBuildResult
+            {
+                Manifest = manifest,
+                ManifestPath = manifestPath,
+                Payloads = payloads
+            };
         }
         finally
         {
@@ -137,59 +148,71 @@ public sealed class PatchUpdateBuilder
         };
     }
 
-    private static void AddFileAction(UpdateManifest manifest, List<PackageEntry> entries, string type, string destination, string sourceFile)
+    private static void AddFileAction(UpdateManifest manifest, List<PatchUpdatePayload> payloads, string outputDirectory, Uri baseUri, string type, string destination, string sourceFile)
     {
-        string sourceName = Guid.NewGuid().ToString("N");
-        entries.Add(new PackageEntry(sourceName, sourceFile));
+        string checksum = ChecksumUtils.ComputeMd5(sourceFile);
+        string sourceName = CreateFileSourceName(checksum);
+
+        PatchUpdatePayload payload = CopyPayload(
+            outputDirectory, baseUri, sourceName,
+            sourceFile, checksum
+        );
+        payloads.Add(payload);
         manifest.Actions.Add(new UpdateAction
         {
             Type = type,
-            Source = sourceName,
+            Source = payload.Source,
+            SourceUrl = payload.Url,
             Destination = destination,
-            Checksum = ChecksumUtils.ComputeMd5(sourceFile)
+            Checksum = payload.Checksum
         });
     }
 
-    private static void WritePackage(string outputZipPath, UpdateManifest manifest, List<PackageEntry> entries)
+    private static PatchUpdatePayload CopyPayload(string outputDirectory, Uri baseUri, string sourceName, string sourceFile, string checksum)
     {
-        string? directory = Path.GetDirectoryName(outputZipPath);
+        UpdatePathUtil.EnsureRelativeSafePath(sourceName, "Source");
+
+        string payloadPath = UpdatePathUtil.CombineSafe(outputDirectory, sourceName);
+        string? directory = Path.GetDirectoryName(payloadPath);
+        
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        using FileStream fs = File.Create(outputZipPath);
-        using ZipOutputStream zip = new(fs);
-        zip.SetLevel(9);
+        File.Copy(sourceFile, payloadPath, true);
 
-        WriteStringEntry(zip, UpdateManifestReader.ManifestEntryName, JsonConvert.SerializeObject(manifest, Formatting.Indented));
-
-        for (int i = 0; i < entries.Count; i++)
-            WriteFileEntry(zip, entries[i].EntryName, entries[i].Path);
+        return new PatchUpdatePayload
+        {
+            Source = sourceName,
+            Path = payloadPath,
+            Url = new Uri(baseUri, Uri.EscapeDataString(sourceName)).ToString(),
+            Checksum = checksum,
+            Size = new FileInfo(payloadPath).Length
+        };
     }
 
-    private static void WriteStringEntry(ZipOutputStream zip, string name, string content)
+    private static void WriteManifest(string manifestPath, UpdateManifest manifest)
     {
-        byte[] data = System.Text.Encoding.UTF8.GetBytes(content);
-        ZipEntry entry = new(name)
+        File.WriteAllText(manifestPath, JsonConvert.SerializeObject(manifest, Formatting.Indented, new JsonSerializerSettings
         {
-            Size = data.Length
-        };
-        zip.PutNextEntry(entry);
-        zip.Write(data, 0, data.Length);
-        zip.CloseEntry();
+            NullValueHandling = NullValueHandling.Ignore
+        }));
     }
 
-    private static void WriteFileEntry(ZipOutputStream zip, string name, string path)
+    private static Uri CreateBaseUri(string baseUrl)
     {
-        FileInfo file = new(path);
-        ZipEntry entry = new(name)
-        {
-            Size = file.Length
-        };
-        zip.PutNextEntry(entry);
+        if (string.IsNullOrEmpty(baseUrl))
+            throw new PatchUpdateException("Patch update base URL is required");
 
-        using FileStream input = File.OpenRead(path);
-        StreamUtils.Copy(input, zip, new byte[4096]);
-        zip.CloseEntry();
+        if (!baseUrl.EndsWith("/", StringComparison.Ordinal))
+            baseUrl += "/";
+
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? uri))
+            throw new PatchUpdateException($"Invalid patch update base URL: {baseUrl}");
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            throw new PatchUpdateException($"Unsupported patch update base URL scheme: {uri.Scheme}");
+
+        return uri;
     }
 
     private static bool ContainsPath(List<string> paths, string path)
@@ -203,15 +226,31 @@ public sealed class PatchUpdateBuilder
         return false;
     }
 
-    private sealed class PackageEntry
+    private static string CreatePatchSourceName(string sourceHash, string destinationHash)
     {
-        public readonly string EntryName;
-        public readonly string Path;
-
-        public PackageEntry(string entryName, string path)
-        {
-            EntryName = entryName;
-            Path = path;
-        }
+        return $"p_{sourceHash}_{destinationHash}";
     }
+
+    private static string CreateFileSourceName(string hash)
+    {
+        return $"f_{hash}";
+    }
+}
+
+#nullable disable
+
+public class PatchUpdateBuildResult
+{
+    public string ManifestPath { get; set; }
+    public UpdateManifest Manifest { get; set; }
+    public List<PatchUpdatePayload> Payloads { get; set; }
+}
+
+public class PatchUpdatePayload
+{
+    public string Source { get; set; }
+    public string Path { get; set; }
+    public string Url { get; set; }
+    public string Checksum { get; set; }
+    public long Size { get; set; }
 }

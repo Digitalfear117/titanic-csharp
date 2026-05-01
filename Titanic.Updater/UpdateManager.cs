@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 using ICSharpCode.SharpZipLib.Zip;
 using Titanic.API;
 using Titanic.API.Models;
@@ -90,7 +91,7 @@ public class UpdateManager : IDisposable
 
     private DownloadedUpdate DownloadPatchUpdatePath(UpdateInformation update)
     {
-        string updatePath = Path.Combine(_settings.DataDirectory, update.ClientIdentifier + Path.DirectorySeparatorChar);
+        string updatePath = Path.Combine(_settings.DataDirectory, update.ClientIdentifier + Path.DirectorySeparatorChar + "_manifests");
 
         if (!Directory.Exists(updatePath))
             Directory.CreateDirectory(updatePath);
@@ -106,17 +107,25 @@ public class UpdateManager : IDisposable
         {
             UpdateInformation pathUpdate = update.UpdatePath[i];
 
-            string filename = Path.GetFileName(pathUpdate.DownloadUrl);
+            string filename = GetManifestFilename(pathUpdate, i);
             if (string.IsNullOrEmpty(filename))
-                filename = $"{pathUpdate.Version}.zip";
+                filename = $"{i:D3}-{SanitizeFilename(pathUpdate.Version)}-update.json";
 
             string path = Path.Combine(updatePath, filename);
+            UpdateManifest manifest;
 
             if (!File.Exists(path))
             {
                 byte[] data = this._api.Download(pathUpdate.DownloadUrl);
                 File.WriteAllBytes(path, data);
+                manifest = UpdateManifestReader.ReadFromJson(Encoding.UTF8.GetString(data));
             }
+            else
+            {
+                manifest = UpdateManifestReader.ReadFromFile(path);
+            }
+
+            UpdateManifestValidator.Validate(manifest, pathUpdate.ClientIdentifier);
 
             downloadedUpdate.Parts.Add(new DownloadedUpdatePart
             {
@@ -124,6 +133,8 @@ public class UpdateManager : IDisposable
                 Filename = filename,
                 Path = path,
                 Version = pathUpdate.Version,
+                ManifestUrl = pathUpdate.DownloadUrl,
+                Manifest = manifest,
             });
         }
 
@@ -137,16 +148,35 @@ public class UpdateManager : IDisposable
 
     private static bool CanDownloadPatchUpdatePath(UpdateInformation update)
     {
-        if (update.UpdatePath.Count == 0)
-            return false;
+        return update.UpdatePath.Count > 0;
+    }
 
-        for (int i = 0; i < update.UpdatePath.Count; i++)
+    private static string GetManifestFilename(UpdateInformation update, int index)
+    {
+        Uri uri = new(update.DownloadUrl);
+        string name = Path.GetFileName(uri.AbsolutePath);
+
+        if (string.IsNullOrEmpty(name) || !name.Contains("."))
+            name = "update.json";
+
+        return $"{index:D3}-{SanitizeFilename(update.Version)}-{SanitizeFilename(name)}";
+    }
+
+    private static string SanitizeFilename(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "unknown";
+
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+        char[] chars = value.ToCharArray();
+
+        for (int i = 0; i < chars.Length; i++)
         {
-            if (!update.UpdatePath[i].IsExtractable)
-                return false;
+            if (Array.IndexOf(invalidChars, chars[i]) >= 0 || chars[i] == '/' || chars[i] == '\\')
+                chars[i] = '_';
         }
 
-        return true;
+        return new string(chars);
     }
 
     public void InstallClientUpdate(DownloadedUpdate update)
@@ -216,7 +246,7 @@ public class UpdateManager : IDisposable
 
         try
         {
-            PatchUpdateApplier applier = new(this._settings, outputDir, staging, ExecutablePath);
+            PatchUpdateApplier applier = new(this._settings, outputDir, staging, ExecutablePath, this._api.Download);
             applier.Apply(update.Parts);
             SetLinuxExecutableBit(outputDir);
             this._settings.Exit?.Invoke();

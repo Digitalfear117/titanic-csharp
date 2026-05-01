@@ -1,13 +1,11 @@
-using ICSharpCode.SharpZipLib.Zip;
-
 namespace Titanic.Updater;
 
 public static class UpdateManifestValidator
 {
-    public const int SupportedFormatVersion = 1;
+    public const int SupportedFormatVersion = 2;
     public const string SupportedPatchAlgorithm = "bsdiff4";
 
-    public static void Validate(UpdateManifest manifest, string clientIdentifier, ZipFile? zip = null)
+    public static void Validate(UpdateManifest manifest, string clientIdentifier)
     {
         if (manifest.FormatVersion != SupportedFormatVersion)
             throw new PatchUpdateException($"Unsupported update manifest format version: {manifest.FormatVersion}");
@@ -19,10 +17,10 @@ public static class UpdateManifestValidator
             throw new PatchUpdateException("Update manifest has no actions");
 
         for (int i = 0; i < manifest.Actions.Count; i++)
-            ValidateAction(manifest.Actions[i], zip);
+            ValidateAction(manifest.Actions[i]);
     }
 
-    private static void ValidateAction(UpdateAction action, ZipFile? zip)
+    private static void ValidateAction(UpdateAction action)
     {
         if (action == null)
             throw new PatchUpdateException("Update manifest contains a null action");
@@ -31,7 +29,7 @@ public static class UpdateManifestValidator
         switch (type)
         {
             case "replace":
-                RequireSource(action, zip);
+                RequirePayloadSource(action);
                 RequireDestination(action);
                 RequireChecksum(action.Checksum, "checksum", type);
                 break;
@@ -41,13 +39,13 @@ public static class UpdateManifestValidator
                 break;
 
             case "store_if_not_exists":
-                RequireSource(action, zip);
+                RequirePayloadSource(action);
                 RequireDestination(action);
                 RequireChecksum(action.Checksum, "checksum", type);
                 break;
 
             case "patch":
-                RequireSource(action, zip);
+                RequirePayloadSource(action);
                 RequireDestination(action);
                 RequireChecksum(action.SourceChecksum, "source_checksum", type);
                 RequireChecksum(action.PatchChecksum, "patch_checksum", type);
@@ -62,16 +60,12 @@ public static class UpdateManifestValidator
         }
     }
 
-    private static void RequireSource(UpdateAction action, ZipFile? zip)
+    private static void RequirePayloadSource(UpdateAction action)
     {
         UpdatePathUtil.EnsureRelativeSafePath(action.Source, "Source");
 
-        if (zip != null)
-        {
-            ZipEntry? entry = zip.GetEntry(UpdatePathUtil.NormalizeArchivePath(action.Source));
-            if (entry == null || !entry.IsFile)
-                throw new PatchUpdateException($"Update archive is missing source entry: {action.Source}");
-        }
+        if (string.IsNullOrEmpty(action.SourceUrl))
+            throw new PatchUpdateException($"Action '{action.Type}' is missing source_url");
     }
 
     private static void RequireDestination(UpdateAction action)

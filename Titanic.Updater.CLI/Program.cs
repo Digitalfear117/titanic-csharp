@@ -51,6 +51,7 @@ internal static class Program
         string oldDirectory = RequireDirectory(options, "old");
         string newDirectory = RequireDirectory(options, "new");
         string output = RequireValue(options, "output");
+        string baseUrl = RequireValue(options, "base-url");
         string client = RequireValue(options, "client");
         string fromVersion = RequireValue(options, "from-version");
         string toVersion = RequireValue(options, "to-version");
@@ -74,9 +75,10 @@ internal static class Program
             builder.StoreIfNotExistsPaths.Add(path);
 
         Console.WriteLine("Building patch update, this may take a while...");
-        UpdateManifest manifest = builder.BuildFromDirectories(oldDirectory, newDirectory, output);
+        PatchUpdateBuildResult result = builder.BuildFromDirectories(oldDirectory, newDirectory, output, baseUrl);
+        UpdateManifest manifest = result.Manifest;
 
-        Console.WriteLine($"Created patch update archive: {Path.GetFullPath(output)}");
+        Console.WriteLine($"Created patch update manifest: {Path.GetFullPath(result.ManifestPath)}");
         Console.WriteLine($"Client: {manifest.Client}");
         Console.WriteLine($"Version: {manifest.From.Version} -> {manifest.To.Version}");
         Console.WriteLine($"Actions: {manifest.Actions.Count}");
@@ -139,7 +141,7 @@ internal static class Program
     private static void PrintActionCount(UpdateManifest manifest, string type)
     {
         int count = manifest.Actions.Count(action => string.Equals(action.Type, type, StringComparison.OrdinalIgnoreCase));
-        Console.WriteLine($"- {type}: {count}");
+        Console.WriteLine($"  - {type}: {count}");
     }
 
     private static bool IsHelp(string arg)
@@ -164,7 +166,7 @@ internal static class Program
           Titanic.Updater.CLI build [options]
 
         Commands:
-          build - Build a patch update archive from old and new client directories.
+          build - Build a patch update manifest and payload directory from old and new client directories.
 
         Run `Titanic.Updater.CLI build --help` for command options.
         """);
@@ -173,15 +175,16 @@ internal static class Program
     private static void PrintBuildPatchHelp()
     {
         Console.WriteLine("""
-        Build a patch update archive.
+        Build a patch update manifest and payload directory.
 
         Usage:
-          build --old <dir> --new <dir> --output <zip> --client <id> --from-version <version> --to-version <version> [options]
+          build --old <dir> --new <dir> --output <dir> --base-url <url> --client <id> --from-version <version> --to-version <version> [options]
 
         Required:
           --old <dir>                    Directory containing the source client version.
           --new <dir>                    Directory containing the target client version.
-          --output <zip>                 Patch update archive to create.
+          --output <dir>                 Directory where update.json and payload files are written.
+          --base-url <url>               Public URL where the output directory contents will be hosted.
           --client <id>                  Client identifier written to update.json.
           --from-version <version>       Source version written to update.json.
           --to-version <version>         Target version written to update.json.

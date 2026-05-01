@@ -2,7 +2,6 @@ using System.Text;
 #if NET8_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
-using ICSharpCode.SharpZipLib.Zip;
 
 namespace Titanic.Updater;
 
@@ -19,20 +18,14 @@ public static class UpdateManifestReader
         return manifest;
     }
 
-    public static UpdateManifest ReadFromZip(string zipPath)
+    public static UpdateManifest ReadFromFile(string path)
     {
-        using FileStream fs = File.OpenRead(zipPath);
-        using ZipFile zip = new(fs);
-        return ReadFromZip(zip);
+        using FileStream stream = File.OpenRead(path);
+        return ReadFromStream(stream);
     }
 
-    public static UpdateManifest ReadFromZip(ZipFile zip)
+    public static UpdateManifest ReadFromStream(Stream stream)
     {
-        ZipEntry? entry = zip.GetEntry(ManifestEntryName);
-        if (entry == null || !entry.IsFile)
-            throw new PatchUpdateException("Patch update is missing update.json");
-
-        using Stream stream = zip.GetInputStream(entry);
         using StreamReader reader = new(stream, Encoding.UTF8);
         return ReadFromJson(reader.ReadToEnd());
     }

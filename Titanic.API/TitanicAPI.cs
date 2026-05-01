@@ -49,7 +49,7 @@ namespace Titanic.API
             this._http = HttpInterfaceFactory.Create(baseUrl);
             this._http.AddDefaultHeader("User-Agent", userAgent);
         }
-        
+
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage(
             "Trimming",
@@ -64,7 +64,7 @@ namespace Titanic.API
                 NamingStrategy = new SnakeCaseNamingStrategy()
             }
         };
-        
+
 
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage(
@@ -74,7 +74,7 @@ namespace Titanic.API
         )]
 #endif
         private T Send
-#if NET8_0_OR_GREATER            
+#if NET8_0_OR_GREATER
             <[DynamicallyAccessedMembers(types)] T>
 #else
             <T>
@@ -83,9 +83,9 @@ namespace Titanic.API
         {
             if (checkToken)
                 EnsureValidAccessToken();
-            
+
             string jsonContent = null;
-            
+
             // Only serialize content for methods that support a body
             if (content != null && methodType != HttpMethodType.GET)
             {
@@ -93,7 +93,7 @@ namespace Titanic.API
                 headers ??= new Dictionary<string, string>();
                 headers["Content-Type"] = "application/json";
             }
-            
+
             string str = this._http.RequestString(
                 methodType, endpoint,
                 jsonContent, headers
@@ -106,8 +106,48 @@ namespace Titanic.API
             return obj;
         }
 
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage(
+            "Trimming",
+            "IL2026",
+            Justification = "The appropriate list element type is marked as untrimmed."
+        )]
+#endif
+        private List<T> SendList
+#if NET8_0_OR_GREATER
+            <[DynamicallyAccessedMembers(types)] T>
+#else
+            <T>
+#endif
+            (HttpMethodType methodType, string endpoint, object content = null, Dictionary<string, string> headers = null, bool checkToken = true)
+        {
+            if (checkToken)
+                EnsureValidAccessToken();
+
+            string jsonContent = null;
+
+            // Only serialize content for methods that support a body
+            if (content != null && methodType != HttpMethodType.GET)
+            {
+                jsonContent = JsonConvert.SerializeObject(content, _settings);
+                headers ??= new Dictionary<string, string>();
+                headers["Content-Type"] = "application/json";
+            }
+
+            string str = this._http.RequestString(
+                methodType, endpoint,
+                jsonContent, headers
+            );
+
+            List<T> obj = JsonConvert.DeserializeObject<List<T>>(str, _settings);
+            if (obj == null)
+                throw new Exception("Response had null content");
+
+            return obj;
+        }
+
         public T Get
-#if NET8_0_OR_GREATER            
+#if NET8_0_OR_GREATER
             <[DynamicallyAccessedMembers(types)] T>
 #else
             <T>
@@ -118,8 +158,20 @@ namespace Titanic.API
             return this.Send<T>(HttpMethodType.GET, endpoint, null, headers);
         }
 
+        public List<T> GetList
+#if NET8_0_OR_GREATER
+            <[DynamicallyAccessedMembers(types)] T>
+#else
+            <T>
+#endif
+            (string endpoint, Dictionary<string, string> headers = null)
+        {
+            Debug.Print("TitanicAPI: GET " + endpoint);
+            return this.SendList<T>(HttpMethodType.GET, endpoint, null, headers);
+        }
+
         public T Post
-#if NET8_0_OR_GREATER            
+#if NET8_0_OR_GREATER
             <[DynamicallyAccessedMembers(types)] T>
 #else
             <T>
@@ -131,8 +183,21 @@ namespace Titanic.API
             return this.Send<T>(HttpMethodType.POST, endpoint, data, headers, endpoint != "/account/refresh");
         }
 
+        public List<T> PostList
+#if NET8_0_OR_GREATER
+            <[DynamicallyAccessedMembers(types)] T>
+#else
+            <T>
+#endif
+            (string endpoint, object data, Dictionary<string, string> headers = null)
+        {
+            Debug.Print("TitanicAPI: POST " + endpoint);
+            // NOTE: we skip token checking for the refresh endpoint to avoid infinite loops
+            return this.SendList<T>(HttpMethodType.POST, endpoint, data, headers, endpoint != "/account/refresh");
+        }
+
         public T Put
-#if NET8_0_OR_GREATER            
+#if NET8_0_OR_GREATER
             <[DynamicallyAccessedMembers(types)] T>
 #else
             <T>
@@ -144,7 +209,7 @@ namespace Titanic.API
         }
 
         public T Patch
-#if NET8_0_OR_GREATER            
+#if NET8_0_OR_GREATER
             <[DynamicallyAccessedMembers(types)] T>
 #else
             <T>
@@ -156,7 +221,7 @@ namespace Titanic.API
         }
 
         public T Delete
-#if NET8_0_OR_GREATER            
+#if NET8_0_OR_GREATER
             <[DynamicallyAccessedMembers(types)] T>
 #else
             <T>
@@ -166,7 +231,19 @@ namespace Titanic.API
             Debug.Print("TitanicAPI: DELETE " + endpoint);
             return this.Send<T>(HttpMethodType.PUT, endpoint, null, headers);
         }
-        
+
+        public List<T> DeleteList
+#if NET8_0_OR_GREATER
+            <[DynamicallyAccessedMembers(types)] T>
+#else
+            <T>
+#endif
+             (string endpoint, Dictionary<string, string> headers = null)
+        {
+            Debug.Print("TitanicAPI: DELETE " + endpoint);
+            return this.SendList<T>(HttpMethodType.PUT, endpoint, null, headers);
+        }
+
         public byte[] Download(string url)
         {
             return this._http.RequestBytes(HttpMethodType.GET, url, null, null);

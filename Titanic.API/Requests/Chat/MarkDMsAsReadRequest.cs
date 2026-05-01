@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<PrivateMessageModel> Execute(TitanicAPI api)
         {
-            return api.Post<List<PrivateMessageModel>>($"/chat/dms/{TargetId}/messages/read", null);
+            return api.PostList<PrivateMessageModel>($"/chat/dms/{TargetId}/messages/read", null);
         }
     }
 }

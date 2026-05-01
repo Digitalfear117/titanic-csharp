@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<BeatmapSetModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<BeatmapSetModel>>($"/users/{UserId}/beatmapsets");
+            return api.GetList<BeatmapSetModel>($"/users/{UserId}/beatmapsets");
         }
     }
 }

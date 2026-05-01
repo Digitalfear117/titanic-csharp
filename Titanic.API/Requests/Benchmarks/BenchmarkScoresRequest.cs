@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<BenchmarkModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<BenchmarkModel>>($"/benchmarks/?page={page}");
+            return api.GetList<BenchmarkModel>($"/benchmarks/?page={page}");
         }
     }
 }

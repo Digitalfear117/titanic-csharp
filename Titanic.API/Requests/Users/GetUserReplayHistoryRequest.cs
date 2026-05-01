@@ -22,7 +22,7 @@ namespace Titanic.API.Requests
             string endpoint = $"/users/{UserId}/history/views/{Mode}";
             if (Until.HasValue)
                 endpoint += $"?until={Until.Value:o}";
-            return api.Get<List<UserReplayHistoryModel>>(endpoint);
+            return api.GetList<UserReplayHistoryModel>(endpoint);
         }
     }
 }

@@ -7,7 +7,7 @@ namespace Titanic.API.Requests
     {
         protected override List<PrivateMessageModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<PrivateMessageModel>>("/chat/dms");
+            return api.GetList<PrivateMessageModel>("/chat/dms");
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Titanic.API.Requests
     {
         protected override List<NotificationModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<NotificationModel>>("/account/notifications");
+            return api.GetList<NotificationModel>("/account/notifications");
         }
     }
 
@@ -17,7 +17,7 @@ namespace Titanic.API.Requests
     {
         protected override List<NotificationModel> Execute(TitanicAPI api)
         {
-            return api.Delete<List<NotificationModel>>("/account/notifications");
+            return api.DeleteList<NotificationModel>("/account/notifications");
         }
     }
 
@@ -32,7 +32,7 @@ namespace Titanic.API.Requests
 
         protected override List<NotificationModel> Execute(TitanicAPI api)
         {
-            return api.Delete<List<NotificationModel>>($"/account/notifications/{NotificationId}");
+            return api.DeleteList<NotificationModel>($"/account/notifications/{NotificationId}");
         }
     }
 }

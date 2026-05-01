@@ -14,7 +14,7 @@ namespace Titanic.API.Requests
 
         protected override List<ChannelModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<ChannelModel>>($"/chat/channels?has_participated={HasParticipated.ToString().ToLower()}");
+            return api.GetList<ChannelModel>($"/chat/channels?has_participated={HasParticipated.ToString().ToLower()}");
         }
     }
 }

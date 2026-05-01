@@ -16,7 +16,7 @@ namespace Titanic.API.Requests
 
         protected override List<OsuReleaseModel> Execute(TitanicAPI api)
         {
-            return api.Get<List<OsuReleaseModel>>($"/releases/official?offset={Offset}&limit={Limit}");
+            return api.GetList<OsuReleaseModel>($"/releases/official?offset={Offset}&limit={Limit}");
         }
     }
 }

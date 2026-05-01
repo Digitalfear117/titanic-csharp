@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Titanic.CDN", "Titanic.CDN\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Titanic.CDN.Tests", "Titanic.CDN.Tests\Titanic.CDN.Tests.csproj", "{BC1C1E3A-ACA6-4A5C-903F-062D84B06D66}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Titanic.Updater.CLI", "Titanic.Updater.CLI\Titanic.Updater.CLI.csproj", "{A939CD19-92F1-417E-9985-85A13DFBC48D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -127,6 +129,18 @@ Global
 		{BC1C1E3A-ACA6-4A5C-903F-062D84B06D66}.Release|x64.Build.0 = Release|Any CPU
 		{BC1C1E3A-ACA6-4A5C-903F-062D84B06D66}.Release|x86.ActiveCfg = Release|Any CPU
 		{BC1C1E3A-ACA6-4A5C-903F-062D84B06D66}.Release|x86.Build.0 = Release|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Debug|x64.Build.0 = Debug|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Debug|x86.Build.0 = Debug|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Release|x64.ActiveCfg = Release|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Release|x64.Build.0 = Release|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Release|x86.ActiveCfg = Release|Any CPU
+		{A939CD19-92F1-417E-9985-85A13DFBC48D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

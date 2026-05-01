@@ -61,9 +61,12 @@ public class UpdateManager : IDisposable
 
         DownloadedUpdate downloadedUpdate = new()
         {
+            Kind = DownloadedUpdateKind.FullArchive,
             Filename = filename,
             Path = path,
             ClientIdentifier = update.ClientIdentifier,
+            FullArchiveUrl = update.DownloadUrl,
+            FullArchivePath = path,
         };
 
         if (File.Exists(path))

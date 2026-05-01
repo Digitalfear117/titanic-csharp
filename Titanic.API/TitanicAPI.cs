@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using Titanic.API.Http;
 using Titanic.API.Models;
 using Titanic.API.Requests;
+using Titanic.Helpers.Http;
 
 namespace Titanic.API
 {
@@ -241,7 +241,7 @@ namespace Titanic.API
              (string endpoint, Dictionary<string, string> headers = null)
         {
             Debug.Print("TitanicAPI: DELETE " + endpoint);
-            return this.SendList<T>(HttpMethodType.PUT, endpoint, null, headers);
+            return this.SendList<T>(HttpMethodType.DELETE, endpoint, null, headers);
         }
 
         public byte[] Download(string url)

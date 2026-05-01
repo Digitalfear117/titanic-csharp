@@ -56,6 +56,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Titanic.API\Titanic.API.csproj" />
+      <ProjectReference Include="..\Titanic.Helpers\Titanic.Helpers.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 using System.Linq;
-using Titanic.API.Http;
 using Titanic.API.Models;
+using Titanic.Helpers.Http;
 
 namespace Titanic.Updater;
 

@@ -1,17 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFrameworks>net20;net35;net40;net45;net48;net8.0;net9.0;net10.0</TargetFrameworks>
-    <RootNamespace>Titanic.API</RootNamespace>
-    <AssemblyName>Titanic.API</AssemblyName>
+    <RootNamespace>Titanic.Helpers</RootNamespace>
+    <AssemblyName>Titanic.Helpers</AssemblyName>
     <LangVersion>14</LangVersion>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>enable</Nullable>
     <IsTrimmable>true</IsTrimmable>
 
-    <!-- NuGet Package Properties -->
-    <PackageId>Titanic.API</PackageId>
-    <Version>1.2.6</Version>
+    <PackageId>Titanic.Helpers</PackageId>
     <Authors>Levi (Lekuru)</Authors>
-    <Description>API wrapper for osu.titanic.sh</Description>
+    <Description>Shared helpers for Titanic! libraries</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/osuTitanic/titanic-csharp</PackageProjectUrl>
     <RepositoryUrl>https://github.com/osuTitanic/titanic-csharp</RepositoryUrl>
@@ -25,17 +24,12 @@
     <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
-    <ItemGroup>
-      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
-    </ItemGroup>
-  </Target>
+  <PropertyGroup Condition="$(TargetFramework) != 'net40' and '$(TargetFramework)' != 'net35' and $(TargetFramework) != 'net20'">
+    <DefineConstants>SUPPORT_HTTPCLIENT</DefineConstants>
+  </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48' or '$(TargetFramework)' == 'net45'">
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Titanic.Helpers\Titanic.Helpers.csproj" />
-  </ItemGroup>
 </Project>

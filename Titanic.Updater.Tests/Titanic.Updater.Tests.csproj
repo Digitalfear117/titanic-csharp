@@ -19,6 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Titanic.Helpers\Titanic.Helpers.csproj" />
       <ProjectReference Include="..\Titanic.Updater\Titanic.Updater.csproj" />
     </ItemGroup>
 

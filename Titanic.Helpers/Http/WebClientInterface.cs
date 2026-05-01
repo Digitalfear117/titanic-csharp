@@ -4,9 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
-using Newtonsoft.Json;
 
-namespace Titanic.API.Http;
+namespace Titanic.Helpers.Http;
 
 #nullable enable
 

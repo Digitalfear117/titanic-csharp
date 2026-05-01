@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 
-namespace Titanic.API.Http;
+namespace Titanic.Helpers.Http;
 
 #nullable enable
 

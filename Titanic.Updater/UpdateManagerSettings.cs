@@ -45,7 +45,7 @@ public class UpdateManagerSettings
     /// <summary>
     /// Cache downloaded patch payloads so failed installs can reuse already-validated files.
     /// </summary>
-    public bool CachePatchPayloads = true;
+    public bool CachePatchPayloads = false;
 
     /// <summary>
     /// The value to set ZipConstants.DefaultCodePage to. Leave as default (0 on CoreCLR, null on framework) if this doesn't break your client.

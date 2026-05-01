@@ -369,7 +369,7 @@ namespace Titanic.Updater
 
                 using (MemoryStream mem = new MemoryStream())
                 {
-                    using (Stream gzstream = new GZipStream(mem, CompressionLevel.SmallestSize, true))
+                    using (Stream gzstream = new GZipStream(mem, CompressionMode.Compress, true))
                     {
                         int pos = 0;
                         int scan = 0, len = 0;
@@ -507,7 +507,7 @@ namespace Titanic.Updater
                 // write compressed diff data
                 using (MemoryStream mem = new MemoryStream())
                 {
-                    using (Stream gzstream = new GZipStream(mem, CompressionLevel.SmallestSize, true))
+                    using (Stream gzstream = new GZipStream(mem, CompressionMode.Compress, true))
                     {
                         progressMax += dblen - newsize;
 
@@ -535,7 +535,7 @@ namespace Titanic.Updater
                 // write compressed extra data
                 using (MemoryStream mem = new MemoryStream())
                 {
-                    using (Stream gzstream = new GZipStream(mem, CompressionLevel.SmallestSize, true))
+                    using (Stream gzstream = new GZipStream(mem, CompressionMode.Compress, true))
                     {
                         progressMax += eblen - newsize;
 

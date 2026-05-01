@@ -1,11 +1,13 @@
 // Taken from https://github.com/tsunyoku/osz2Tools
+using System;
+using System.IO;
 using System.IO.Compression;
 using System.Text;
 
 /* uncomment this to use unsafe version of memcmp */
 //#define MEMCMP_UNSAFE
 
-namespace Titanic.Updater
+namespace Titanic.Helpers.Patching
 {
     public class BSDiffer
     {

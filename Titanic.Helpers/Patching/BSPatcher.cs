@@ -1,7 +1,9 @@
 // Taken from https://github.com/tsunyoku/osz2Tools
+using System;
+using System.IO;
 using System.IO.Compression;
 
-namespace Titanic.Updater
+namespace Titanic.Helpers.Patching
 {
     public delegate void ProgressUpdateHandler(object sender, long current, long total);
 

@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 #endif
 using ICSharpCode.SharpZipLib.Core;
 using ICSharpCode.SharpZipLib.Zip;
+using Titanic.Helpers.Patching;
 
 namespace Titanic.Updater;
 

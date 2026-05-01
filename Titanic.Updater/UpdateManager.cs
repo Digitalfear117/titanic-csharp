@@ -44,10 +44,20 @@ public class UpdateManager : IDisposable
 
         return update.TargetRelease == null
             ? null
-            : new UpdateInformation(update.TargetRelease, clientInfo.ClientIdentifier);
+            : new UpdateInformation(update, clientInfo.ClientIdentifier);
     }
 
     public DownloadedUpdate DownloadClientUpdate(UpdateInformation update)
+    {
+        bool canUsePatchUpdate = update.HasPatchUpdatePath && CanDownloadPatchUpdatePath(update);
+
+        if (this._settings.PreferPatchUpdates && canUsePatchUpdate)
+            return DownloadPatchUpdatePath(update);
+
+        return DownloadFullUpdate(update);
+    }
+
+    private DownloadedUpdate DownloadFullUpdate(UpdateInformation update)
     {
         if (!update.IsExtractable)
             throw new Exception("Update is not extractable (not a .zip), check update.IsExtractable and prompt the user to open the update.DownloadUrl instead or repackage your updates");
@@ -78,9 +88,84 @@ public class UpdateManager : IDisposable
         return downloadedUpdate;
     }
 
+    private DownloadedUpdate DownloadPatchUpdatePath(UpdateInformation update)
+    {
+        string updatePath = Path.Combine(_settings.DataDirectory, update.ClientIdentifier + Path.DirectorySeparatorChar);
+
+        if (!Directory.Exists(updatePath))
+            Directory.CreateDirectory(updatePath);
+
+        DownloadedUpdate downloadedUpdate = new()
+        {
+            Kind = DownloadedUpdateKind.PatchUpdatePath,
+            ClientIdentifier = update.ClientIdentifier,
+            FullArchiveUrl = update.DownloadUrl,
+        };
+
+        for (int i = 0; i < update.UpdatePath.Count; i++)
+        {
+            UpdateInformation pathUpdate = update.UpdatePath[i];
+
+            string filename = Path.GetFileName(pathUpdate.DownloadUrl);
+            if (string.IsNullOrEmpty(filename))
+                filename = $"{pathUpdate.Version}.zip";
+
+            string path = Path.Combine(updatePath, filename);
+
+            if (!File.Exists(path))
+            {
+                byte[] data = this._api.Download(pathUpdate.DownloadUrl);
+                File.WriteAllBytes(path, data);
+            }
+
+            downloadedUpdate.Parts.Add(new DownloadedUpdatePart
+            {
+                ClientIdentifier = pathUpdate.ClientIdentifier,
+                Filename = filename,
+                Path = path,
+                Version = pathUpdate.Version,
+            });
+        }
+
+        if (downloadedUpdate.Parts.Count > 0)
+        {
+            downloadedUpdate.Filename = downloadedUpdate.Parts[downloadedUpdate.Parts.Count - 1].Filename;
+            downloadedUpdate.Path = downloadedUpdate.Parts[downloadedUpdate.Parts.Count - 1].Path;
+        }
+        return downloadedUpdate;
+    }
+
+    private static bool CanDownloadPatchUpdatePath(UpdateInformation update)
+    {
+        if (update.UpdatePath.Count == 0)
+            return false;
+
+        for (int i = 0; i < update.UpdatePath.Count; i++)
+        {
+            if (!update.UpdatePath[i].IsExtractable)
+                return false;
+        }
+
+        return true;
+    }
+
     public void InstallClientUpdate(DownloadedUpdate update)
     {
+        if (update.Kind == DownloadedUpdateKind.PatchUpdatePath)
+        {
+            InstallPatchUpdate(update);
+            return;
+        }
+
+        InstallFullArchiveUpdate(update);
+    }
+
+    private void InstallFullArchiveUpdate(DownloadedUpdate update)
+    {
         string staging = Path.Combine(_settings.DataDirectory, "_staging");
+        if (Directory.Exists(staging))
+            Directory.Delete(staging, true);
+
         if (!Directory.Exists(staging))
             Directory.CreateDirectory(staging);
 
@@ -92,12 +177,7 @@ public class UpdateManager : IDisposable
             File.Move(processPath, processPath + ".old");
         }
 
-        string outputDir = _settings.OutputPath;
-        if (string.IsNullOrEmpty(outputDir))
-            outputDir = Environment.CurrentDirectory;
-
-        if (this._settings.IncludeClientIdentifierInOutputPath)
-            outputDir = Path.Combine(outputDir, update.ClientIdentifier + '/');
+        string outputDir = GetOutputDirectory(update.ClientIdentifier);
 
         if (!Directory.Exists(outputDir))
             Directory.CreateDirectory(outputDir);
@@ -105,13 +185,87 @@ public class UpdateManager : IDisposable
         string[] files = Directory.GetFiles(staging, "*.*", SearchOption.AllDirectories);
         foreach (string file in files)
         {
-            string dest = Path.Combine(outputDir, file.Replace(staging + '/', ""));
+            string relativePath = UpdatePathUtil.GetRelativePath(staging, file);
+            string dest = UpdatePathUtil.CombineSafe(outputDir, relativePath);
             if (File.Exists(dest))
                 File.Delete(dest);
+
+            string? directory = Path.GetDirectoryName(dest);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
 
             File.Move(file, dest);
         }
 
+        SetLinuxExecutableBit(outputDir);
+
+        this._settings.Exit?.Invoke();
+    }
+
+    private void InstallPatchUpdate(DownloadedUpdate update)
+    {
+        string staging = Path.Combine(_settings.DataDirectory, "_staging");
+        if (Directory.Exists(staging))
+            Directory.Delete(staging, true);
+
+        Directory.CreateDirectory(staging);
+
+        string outputDir = GetOutputDirectory(update.ClientIdentifier);
+        if (!Directory.Exists(outputDir))
+            Directory.CreateDirectory(outputDir);
+
+        try
+        {
+            PatchUpdateApplier applier = new(this._settings, outputDir, staging, ExecutablePath);
+            applier.Apply(update.Parts);
+            SetLinuxExecutableBit(outputDir);
+            this._settings.Exit?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            if (!this._settings.FallbackToFullArchive)
+                throw new PatchUpdateException("Patch update failed and full archive fallback is disabled", ex);
+
+            DownloadedUpdate fullUpdate = DownloadFallbackFullUpdate(update);
+            InstallFullArchiveUpdate(fullUpdate);
+        }
+    }
+
+    private DownloadedUpdate DownloadFallbackFullUpdate(DownloadedUpdate update)
+    {
+        if (!string.IsNullOrEmpty(update.FullArchivePath) && File.Exists(update.FullArchivePath))
+        {
+            return new DownloadedUpdate
+            {
+                Kind = DownloadedUpdateKind.FullArchive,
+                ClientIdentifier = update.ClientIdentifier,
+                Filename = Path.GetFileName(update.FullArchivePath),
+                Path = update.FullArchivePath,
+                FullArchivePath = update.FullArchivePath,
+            };
+        }
+
+        if (string.IsNullOrEmpty(update.FullArchiveUrl))
+            throw new PatchUpdateException("Patch update failed and no full archive fallback URL is available");
+
+        UpdateInformation fallback = new(update.FullArchiveUrl, update.ClientIdentifier, string.Empty);
+        return DownloadFullUpdate(fallback);
+    }
+
+    private string GetOutputDirectory(string clientIdentifier)
+    {
+        string outputDir = _settings.OutputPath;
+        if (string.IsNullOrEmpty(outputDir))
+            outputDir = Environment.CurrentDirectory;
+
+        if (this._settings.IncludeClientIdentifierInOutputPath)
+            outputDir = Path.Combine(outputDir, clientIdentifier + Path.DirectorySeparatorChar);
+
+        return outputDir;
+    }
+
+    private static void SetLinuxExecutableBit(string outputDir)
+    {
 #if NET10_0_OR_GREATER
         string osuExecutable = Path.Combine(outputDir, "osu!");
         if (OperatingSystem.IsLinux() && File.Exists(osuExecutable))
@@ -121,8 +275,6 @@ public class UpdateManager : IDisposable
             File.SetUnixFileMode(osuExecutable, fileMode);
         }
 #endif
-
-        this._settings.Exit?.Invoke();
     }
 
     private static string ExecutablePath =>

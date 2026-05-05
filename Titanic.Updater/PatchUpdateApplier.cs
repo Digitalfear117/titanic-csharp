@@ -120,7 +120,7 @@ public sealed class PatchUpdateApplier
         {
             if (!File.Exists(destination))
                 throw new PatchUpdateException($"Cannot patch missing destination: {action.Destination}");
-            
+
             if (ChecksumUtils.Md5Equals(ChecksumUtils.ComputeMd5(destination), action.Checksum))
                 // Already patched
                 return;
@@ -136,13 +136,15 @@ public sealed class PatchUpdateApplier
 
             BackupDestination(destination, backupRoot, backups);
             MoveFileAndReplace(result, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
-            
+
             _settings.PatchUpdateFilePatched?.Invoke(new FilePatchedEvent(part, manifest, action, destination));
         }
         catch
         {
             try
             {
+                // Patching the current file did not succeed, so
+                // we have to fall back to downloading the entire file
                 string sourceName = CreateFileSourceName(action.Checksum);
                 string temp = DownloadPayload(part, action.SourceUrlFull, sourceName, action.Checksum, "full patch fallback");
                 BackupDestination(destination, backupRoot, backups);
@@ -157,17 +159,6 @@ public sealed class PatchUpdateApplier
                 );
             }
         }
-    }
-
-    private void VerifyFileChecksum(string path, string expected, string label)
-    {
-        if (!_settings.ValidatePatchUpdateChecksums)
-            return;
-
-        string actual = ChecksumUtils.ComputeMd5(path);
-
-        if (!ChecksumUtils.Md5Equals(actual, expected))
-            throw new PatchUpdateException($"Invalid {label} checksum for '{path}'. Expected {expected}, got {actual}");
     }
 
     /// <summary>
@@ -210,7 +201,12 @@ public sealed class PatchUpdateApplier
         return stagingPath;
     }
 
-    private Uri ResolvePayloadUri(DownloadedUpdatePart part, string sourceUrl, string label)
+    /// <summary>
+    /// Resolves the source URL for a payload, handling both absolute and relative URLs.
+    /// If the source URL is absolute, it is returned as-is after validation.
+    /// If the source URL is relative, it is resolved with the manifest URL.
+    /// </summary>
+    private Uri ResolvePayloadUri(DownloadedUpdatePart part, string sourceUrl, string label = "<unknown>")
     {
         if (Uri.TryCreate(sourceUrl, UriKind.Absolute, out Uri? uri))
             return ValidatePayloadUri(uri);
@@ -221,6 +217,9 @@ public sealed class PatchUpdateApplier
         return ValidatePayloadUri(new Uri(manifestUri, sourceUrl));
     }
 
+    /// <summary>
+    /// Validates that the given URI uses an allowed scheme (HTTP or HTTPS).
+    /// </summary>
     private static Uri ValidatePayloadUri(Uri uri)
     {
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
@@ -250,6 +249,26 @@ public sealed class PatchUpdateApplier
         return UpdatePathUtil.CombineSafe(cacheRoot, source);
     }
 
+    /// <summary>
+    /// Ensures that the file at the given path has an MD5 checksum that matches the expected value.
+    /// </summary>
+    /// <exception cref="PatchUpdateException">
+    /// Thrown if the file's checksum does not match the expected value.
+    /// </exception>
+    private void VerifyFileChecksum(string path, string expected, string label = "file")
+    {
+        if (!_settings.ValidatePatchUpdateChecksums)
+            return;
+
+        string actual = ChecksumUtils.ComputeMd5(path);
+
+        if (!ChecksumUtils.Md5Equals(actual, expected))
+            throw new PatchUpdateException($"Invalid {label} checksum for '{path}'. Expected {expected}, got {actual}");
+    }
+
+    /// <summary>
+    /// Checks if the file at the given path has an MD5 checksum that matches the expected value.
+    /// </summary>
     private bool FileChecksumMatches(string path, string expectedChecksum)
     {
         string actual = ChecksumUtils.ComputeMd5(path);

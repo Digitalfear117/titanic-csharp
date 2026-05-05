@@ -7,8 +7,6 @@ namespace Titanic.Updater;
 
 public static class UpdateManifestReader
 {
-    public const string ManifestEntryName = "update.json";
-
     public static UpdateManifest ReadFromJson(string json)
     {
         UpdateManifest? manifest = JsonConvert.DeserializeObject<UpdateManifest>(json);

@@ -8,6 +8,16 @@ public class UpdateManagerSettings
     public Action? Exit;
 
     /// <summary>
+    /// Called after a patch update action successfully patches a file.
+    /// </summary>
+    public Action<FilePatchedEvent>? PatchUpdateFilePatched;
+
+    /// <summary>
+    /// Called after a patch update manifest has been fully applied.
+    /// </summary>
+    public Action<ManifestAppliedEvent>? PatchUpdateManifestApplied;
+
+    /// <summary>
     /// The data directory to use for staging updates. Default is 'Data/Updater'.
     /// </summary>
     public string DataDirectory = "Data/Updater";
@@ -60,4 +70,32 @@ public class UpdateManagerSettings
 #else
         null;
 #endif
+}
+
+public sealed class FilePatchedEvent
+{
+    public FilePatchedEvent(DownloadedUpdatePart part, UpdateManifest manifest, UpdateAction action, string destination)
+    {
+        Part = part;
+        Manifest = manifest;
+        Action = action;
+        Destination = destination;
+    }
+
+    public DownloadedUpdatePart Part { get; }
+    public UpdateManifest Manifest { get; }
+    public UpdateAction Action { get; }
+    public string Destination { get; }
+}
+
+public sealed class ManifestAppliedEvent
+{
+    public ManifestAppliedEvent(DownloadedUpdatePart part, UpdateManifest manifest)
+    {
+        Part = part;
+        Manifest = manifest;
+    }
+
+    public DownloadedUpdatePart Part { get; }
+    public UpdateManifest Manifest { get; }
 }

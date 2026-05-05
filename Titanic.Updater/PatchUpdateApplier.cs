@@ -50,10 +50,12 @@ public sealed class PatchUpdateApplier
         UpdateManifestValidator.Validate(manifest, part.ClientIdentifier);
 
         foreach (var action in manifest.Actions)
-            ApplyAction(part, action, backupRoot, backups);
+            ApplyAction(part, manifest, action, backupRoot, backups);
+
+        _settings.PatchUpdateManifestApplied?.Invoke(new ManifestAppliedEvent(part, manifest));
     }
 
-    private void ApplyAction(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
+    private void ApplyAction(DownloadedUpdatePart part, UpdateManifest manifest, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
         switch (action.Type)
         {
@@ -70,7 +72,7 @@ public sealed class PatchUpdateApplier
                 break;
 
             case "patch":
-                Patch(part, action, backupRoot, backups);
+                Patch(part, manifest, action, backupRoot, backups);
                 break;
         }
     }
@@ -110,7 +112,7 @@ public sealed class PatchUpdateApplier
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
     }
 
-    private void Patch(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
+    private void Patch(DownloadedUpdatePart part, UpdateManifest manifest, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
     {
         string destination = GetDestination(action.Destination);
 
@@ -134,6 +136,8 @@ public sealed class PatchUpdateApplier
 
             BackupDestination(destination, backupRoot, backups);
             MoveFileAndReplace(result, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
+            
+            _settings.PatchUpdateFilePatched?.Invoke(new FilePatchedEvent(part, manifest, action, destination));
         }
         catch
         {

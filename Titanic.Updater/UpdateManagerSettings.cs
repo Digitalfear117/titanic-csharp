@@ -45,17 +45,12 @@ public class UpdateManagerSettings
     /// <summary>
     /// Fall back to the target release's full archive if a patch update cannot be installed.
     /// </summary>
-    public bool FallbackToFullArchive = true;
+    public bool FallbackToFullArchive = false;
 
     /// <summary>
     /// Validate MD5 checksums declared by patch update manifests.
     /// </summary>
     public bool ValidatePatchUpdateChecksums = true;
-
-    /// <summary>
-    /// Cache downloaded patch payloads so failed installs can reuse already-validated files.
-    /// </summary>
-    public bool CachePatchPayloads = false;
 
     /// <summary>
     /// The value to set ZipConstants.DefaultCodePage to. Leave as default (0 on CoreCLR, null on framework) if this doesn't break your client.

@@ -1,6 +1,5 @@
 using Titanic.API;
 using Titanic.Helpers.Patching;
-using System.Text;
 
 namespace Titanic.Updater;
 
@@ -86,7 +85,7 @@ public sealed class PatchUpdateApplier
             // No need to replace or download
             return;
 
-        string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.Checksum), action.Checksum, "replacement");
+        string temp = DownloadPayload(part, action.SourceUrlFull, action.Checksum, "replacement");
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
     }
@@ -106,7 +105,7 @@ public sealed class PatchUpdateApplier
         if (File.Exists(destination))
             return;
 
-        string temp = DownloadPayload(part, action.SourceUrlFull, CreateFileSourceName(action.Checksum), action.Checksum, "stored file");
+        string temp = DownloadPayload(part, action.SourceUrlFull, action.Checksum, "stored file");
 
         BackupDestination(destination, backupRoot, backups);
         MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
@@ -127,8 +126,7 @@ public sealed class PatchUpdateApplier
 
             VerifyFileChecksum(destination, action.SourceChecksum, "patch source");
 
-            string patchName = CreatePatchSourceName(action.SourceChecksum, action.Checksum);
-            string patchFile = DownloadPayload(part, action.SourceUrlPatch, patchName, action.PatchChecksum, "patch");
+            string patchFile = DownloadPayload(part, action.SourceUrlPatch, action.PatchChecksum, "patch");
 
             string result = Path.Combine(_stagingDir, Guid.NewGuid().ToString("N") + ".patched");
             new BSPatcher().Patch(destination, result, patchFile);
@@ -145,8 +143,7 @@ public sealed class PatchUpdateApplier
             {
                 // Patching the current file did not succeed, so
                 // we have to fall back to downloading the entire file
-                string sourceName = CreateFileSourceName(action.Checksum);
-                string temp = DownloadPayload(part, action.SourceUrlFull, sourceName, action.Checksum, "full patch fallback");
+                string temp = DownloadPayload(part, action.SourceUrlFull, action.Checksum, "full patch fallback");
                 BackupDestination(destination, backupRoot, backups);
                 MoveFileAndReplace(temp, destination, _settings.ReplaceCurrentExecutable ? _executablePath : null);
             }
@@ -162,43 +159,22 @@ public sealed class PatchUpdateApplier
     }
 
     /// <summary>
-    /// Downloads a payload file to a temporary or cached location.
+    /// Downloads a payload file to a temporary location.
     /// </summary>
-    private string DownloadPayload(DownloadedUpdatePart part, string sourceUrl, string cacheSource, string expectedChecksum, string label)
+    private string DownloadPayload(DownloadedUpdatePart part, string sourceUrl, string expectedChecksum, string label)
     {
         Uri payloadUri = ResolvePayloadUri(part, sourceUrl, label);
-        string outputPath = GetPayloadPath(part, cacheSource, payloadUri);
+        string outputPath = Path.Combine(_stagingDir, "_payload_" + Guid.NewGuid().ToString("N"));
 
         string? directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        if (File.Exists(outputPath))
-        {
-            if (!_settings.ValidatePatchUpdateChecksums || FileChecksumMatches(outputPath, expectedChecksum))
-                return GetUsablePayloadPath(outputPath);
-
-            File.Delete(outputPath);
-        }
-
         byte[] payload = _download(payloadUri.ToString());
         File.WriteAllBytes(outputPath, payload);
         VerifyFileChecksum(outputPath, expectedChecksum, label);
 
-        return GetUsablePayloadPath(outputPath);
-    }
-
-    /// <summary>
-    /// If caching of patch payloads is enabled, copies the payload to a staging location and returns the new path.
-    /// </summary>
-    private string GetUsablePayloadPath(string payloadPath)
-    {
-        if (!_settings.CachePatchPayloads)
-            return payloadPath;
-
-        string stagingPath = Path.Combine(_stagingDir, "_payload_" + Guid.NewGuid().ToString("N"));
-        File.Copy(payloadPath, stagingPath, true);
-        return stagingPath;
+        return outputPath;
     }
 
     /// <summary>
@@ -229,27 +205,6 @@ public sealed class PatchUpdateApplier
     }
 
     /// <summary>
-    /// Gets the path to store the downloaded payload for a patch action.
-    /// If caching is enabled, this will be a cache path; otherwise, it will be a temporary path in the staging directory.
-    /// </summary>
-    private string GetPayloadPath(DownloadedUpdatePart part, string cacheSource, Uri payloadUri)
-    {
-        if (!_settings.CachePatchPayloads)
-            return Path.Combine(_stagingDir, "_payload_" + Guid.NewGuid().ToString("N"));
-
-        string manifestKey = SanitizePathPart(string.IsNullOrEmpty(part.Version) ? part.Filename : part.Version);
-
-        string dataDirectoryPath = Path.Combine(_settings.DataDirectory, part.ClientIdentifier);
-        string payloadsPath = Path.Combine(dataDirectoryPath, "_payloads");
-        string cacheRoot = Path.Combine(payloadsPath, manifestKey);
-
-        string source = string.IsNullOrEmpty(cacheSource)
-            ? ChecksumUtils.ComputeMd5(new MemoryStream(Encoding.UTF8.GetBytes(payloadUri.ToString())))
-            : cacheSource;
-        return UpdatePathUtil.CombineSafe(cacheRoot, source);
-    }
-
-    /// <summary>
     /// Ensures that the file at the given path has an MD5 checksum that matches the expected value.
     /// </summary>
     /// <exception cref="PatchUpdateException">
@@ -264,15 +219,6 @@ public sealed class PatchUpdateApplier
 
         if (!ChecksumUtils.Md5Equals(actual, expected))
             throw new PatchUpdateException($"Invalid {label} checksum for '{path}'. Expected {expected}, got {actual}");
-    }
-
-    /// <summary>
-    /// Checks if the file at the given path has an MD5 checksum that matches the expected value.
-    /// </summary>
-    private bool FileChecksumMatches(string path, string expectedChecksum)
-    {
-        string actual = ChecksumUtils.ComputeMd5(path);
-        return ChecksumUtils.Md5Equals(actual, expectedChecksum);
     }
 
     /// <summary>
@@ -331,27 +277,6 @@ public sealed class PatchUpdateApplier
         }
     }
 
-    /// <summary>
-    /// Sanitizes a string to be used as part of a file path by replacing invalid characters with underscores.
-    /// Example: "1/0/0" -> "1_0_0", "1:0:0" -> "1_0_0". If the input is null or empty, returns "unknown".
-    /// </summary>
-    private static string SanitizePathPart(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return "unknown";
-
-        char[] invalidChars = Path.GetInvalidFileNameChars();
-        char[] chars = value.ToCharArray();
-
-        for (int i = 0; i < chars.Length; i++)
-        {
-            if (Array.IndexOf(invalidChars, chars[i]) >= 0 || chars[i] == '/' || chars[i] == '\\')
-                chars[i] = '_';
-        }
-
-        return new string(chars);
-    }
-
     private static void MoveFileAndReplace(string source, string destination, string? executablePath)
     {
         string? directory = Path.GetDirectoryName(destination);
@@ -391,13 +316,4 @@ public sealed class PatchUpdateApplier
         return api.Download(url);
     }
 
-    private static string CreateFileSourceName(string hash)
-    {
-        return $"f_{hash}";
-    }
-
-    private static string CreatePatchSourceName(string sourceHash, string destinationHash)
-    {
-        return $"p_{sourceHash}_{destinationHash}";
-    }
 }

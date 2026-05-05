@@ -1,6 +1,7 @@
 #if NET8_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
+using System.Linq;
 using Titanic.Helpers.Patching;
 
 namespace Titanic.Updater;
@@ -38,6 +39,7 @@ public sealed class PatchUpdateBuilder
             foreach (string newFile in newFiles)
                 newByRelative[UpdatePathUtil.GetRelativePath(newDirectory, newFile)] = newFile;
 
+            // First resolve all files that were deleted in the new version
             foreach (KeyValuePair<string, string> oldFile in oldByRelative)
             {
                 if (!newByRelative.ContainsKey(oldFile.Key))
@@ -50,6 +52,7 @@ public sealed class PatchUpdateBuilder
                 }
             }
 
+            // Next resolve all files that were added / changed in the new version
             foreach (KeyValuePair<string, string> newFile in newByRelative)
             {
                 bool storeIfNotExists = ContainsPath(StoreIfNotExistsPaths, newFile.Key);
@@ -87,11 +90,11 @@ public sealed class PatchUpdateBuilder
                     string patchSourceName = CreatePatchSourceName(oldHash, newHash);
                     string fullSourceName = CreateFileSourceName(newHash);
 
-                    PatchUpdatePayload patchPayload = CopyPayload(
+                    PatchUpdatePayload patchPayload = CopyPayloadToDirectory(
                         outputDirectory, baseUri, patchSourceName,
                         patchPath, ChecksumUtils.ComputeMd5(patchPath)
                     );
-                    PatchUpdatePayload fullPayload = CopyPayload(
+                    PatchUpdatePayload fullPayload = CopyPayloadToDirectory(
                         outputDirectory, baseUri, fullSourceName,
                         newFile.Value, newHash
                     );
@@ -118,7 +121,7 @@ public sealed class PatchUpdateBuilder
             }
 
             string manifestPath = Path.Combine(outputDirectory, CreateManifestFilename(manifest));
-            WriteManifest(manifestPath, manifest);
+            WriteManifestToFile(manifestPath, manifest);
 
             return new PatchUpdateBuildResult
             {
@@ -134,6 +137,9 @@ public sealed class PatchUpdateBuilder
         }
     }
 
+    /// <summary>
+    /// Creates a new update manifest with the available metadata, without any actions.
+    /// </summary>
     private UpdateManifest CreateManifest()
     {
         return new UpdateManifest
@@ -154,12 +160,15 @@ public sealed class PatchUpdateBuilder
         };
     }
 
+    /// <summary>
+    /// Adds an action to the manifest & the file to the payloads list.
+    /// </summary>
     private static void AddFileAction(UpdateManifest manifest, List<PatchUpdatePayload> payloads, string outputDirectory, Uri baseUri, string type, string destination, string sourceFile)
     {
         string checksum = ChecksumUtils.ComputeMd5(sourceFile);
         string sourceName = CreateFileSourceName(checksum);
 
-        PatchUpdatePayload payload = CopyPayload(
+        PatchUpdatePayload payload = CopyPayloadToDirectory(
             outputDirectory, baseUri, sourceName,
             sourceFile, checksum
         );
@@ -173,13 +182,13 @@ public sealed class PatchUpdateBuilder
         });
     }
 
-    private static PatchUpdatePayload CopyPayload(string outputDirectory, Uri baseUri, string sourceName, string sourceFile, string checksum)
+    private static PatchUpdatePayload CopyPayloadToDirectory(string outputDirectory, Uri baseUri, string sourceName, string sourceFile, string checksum)
     {
         UpdatePathUtil.EnsureRelativeSafePath(sourceName, "Source");
 
         string payloadPath = UpdatePathUtil.CombineSafe(outputDirectory, sourceName);
         string? directory = Path.GetDirectoryName(payloadPath);
-        
+
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
@@ -195,7 +204,7 @@ public sealed class PatchUpdateBuilder
         };
     }
 
-    private static void WriteManifest(string manifestPath, UpdateManifest manifest)
+    private static void WriteManifestToFile(string manifestPath, UpdateManifest manifest)
     {
         File.WriteAllText(manifestPath, JsonConvert.SerializeObject(manifest, Formatting.Indented, new JsonSerializerSettings
         {
@@ -222,13 +231,7 @@ public sealed class PatchUpdateBuilder
 
     private static bool ContainsPath(List<string> paths, string path)
     {
-        for (int i = 0; i < paths.Count; i++)
-        {
-            if (string.Equals(UpdatePathUtil.NormalizeArchivePath(paths[i]), path, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        return paths.Any(p => string.Equals(UpdatePathUtil.NormalizeArchivePath(p), path, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string CreatePatchSourceName(string sourceHash, string destinationHash)

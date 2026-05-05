@@ -23,9 +23,9 @@ internal static class UpdatePathUtil
             throw new PatchUpdateException($"{label} path is rooted: {path}");
 
         string[] parts = normalized.Split('/');
-        for (int i = 0; i < parts.Length; i++)
+        foreach (string part in parts)
         {
-            if (parts[i] == "..")
+            if (part == "..")
                 throw new PatchUpdateException($"{label} path escapes the update root: {path}");
         }
     }

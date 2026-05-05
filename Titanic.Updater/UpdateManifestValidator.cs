@@ -16,8 +16,8 @@ public static class UpdateManifestValidator
         if (manifest.Actions == null)
             throw new PatchUpdateException("Update manifest has no actions");
 
-        for (int i = 0; i < manifest.Actions.Count; i++)
-            ValidateAction(manifest.Actions[i]);
+        foreach (UpdateAction? action in manifest.Actions)
+            ValidateAction(action);
     }
 
     private static void ValidateAction(UpdateAction action)

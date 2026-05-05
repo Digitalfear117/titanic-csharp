@@ -17,8 +17,8 @@ public static class ChecksumUtils
         byte[] hash = md5.ComputeHash(stream);
         StringBuilder builder = new(hash.Length * 2);
 
-        for (int i = 0; i < hash.Length; i++)
-            builder.Append(hash[i].ToString("x2"));
+        foreach (byte b in hash)
+            builder.Append(b.ToString("x2"));
 
         return builder.ToString();
     }

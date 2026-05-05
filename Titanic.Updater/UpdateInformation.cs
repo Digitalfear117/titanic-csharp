@@ -33,10 +33,8 @@ public class UpdateInformation
             return;
 
         this.PatchUpdatePathComplete = true;
-        for (int i = 0; i < update.Path.Count; i++)
+        foreach (var entry in update.Path)
         {
-            ModdedReleaseEntryModel entry = update.Path[i];
-
             if (!string.IsNullOrEmpty(entry.UpdateUrl))
             {
                 this.UpdatePath.Add(new UpdateInformation(entry.UpdateUrl, identifier, entry.Version));

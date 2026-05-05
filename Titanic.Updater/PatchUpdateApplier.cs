@@ -31,8 +31,8 @@ public sealed class PatchUpdateApplier
 
         try
         {
-            for (int i = 0; i < parts.Count; i++)
-                ApplyPart(parts[i], backupRoot, backups);
+            foreach (DownloadedUpdatePart? part in parts)
+                ApplyPart(part, backupRoot, backups);
 
             DeleteDirectoryIfExists(backupRoot);
         }

@@ -106,19 +106,11 @@ public class UpdateManager : IDisposable
 
             string filename = GetManifestFilename(pathUpdate);
             string path = Path.Combine(updatePath, filename);
-            UpdateManifest manifest;
 
-            if (!File.Exists(path))
-            {
-                byte[] data = this._api.Download(pathUpdate.DownloadUrl);
-                File.WriteAllBytes(path, data);
-                manifest = UpdateManifestReader.ReadFromJson(Encoding.UTF8.GetString(data));
-            }
-            else
-            {
-                manifest = UpdateManifestReader.ReadFromFile(path);
-            }
+            byte[] data = this._api.Download(pathUpdate.DownloadUrl);
+            File.WriteAllBytes(path, data);
 
+            UpdateManifest manifest = UpdateManifestReader.ReadFromJson(Encoding.UTF8.GetString(data));
             UpdateManifestValidator.Validate(manifest, pathUpdate.ClientIdentifier);
 
             downloadedUpdate.Parts.Add(new DownloadedUpdatePart

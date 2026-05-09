@@ -10,6 +10,9 @@ public class UpdateManifest
     [JsonProperty("client")]
     public string Client { get; set; }
 
+    [JsonProperty("force_update")]
+    public bool ForceUpdate { get; set; }
+
     [JsonProperty("from")]
     public UpdateManifestEndpoint From { get; set; }
 

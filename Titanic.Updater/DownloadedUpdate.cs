@@ -16,6 +16,7 @@ public class DownloadedUpdate
     public string Path;
     public string FullArchiveUrl;
     public string FullArchivePath;
+    public bool IsForceUpdate = false;
     public List<DownloadedUpdatePart> Parts = new();
 }
 

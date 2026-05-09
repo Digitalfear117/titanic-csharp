@@ -113,6 +113,9 @@ public class UpdateManager : IDisposable
             UpdateManifest manifest = UpdateManifestReader.ReadFromJson(Encoding.UTF8.GetString(data));
             UpdateManifestValidator.Validate(manifest, pathUpdate.ClientIdentifier);
 
+            if (manifest.ForceUpdate)
+                downloadedUpdate.IsForceUpdate = true;
+
             downloadedUpdate.Parts.Add(new DownloadedUpdatePart
             {
                 ClientIdentifier = pathUpdate.ClientIdentifier,

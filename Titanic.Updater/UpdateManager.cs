@@ -9,12 +9,13 @@ namespace Titanic.Updater;
 
 public class UpdateManager : IDisposable
 {
-    private readonly TitanicAPI _api = new();
+    private readonly TitanicAPI _api;
     private readonly UpdateManagerSettings _settings;
 
     public UpdateManager(UpdateManagerSettings settings)
     {
         this._settings = settings;
+        this._api = new TitanicAPI(settings.ApiBaseUrl);
 
         if (settings.SharpZipLibCodePage != null)
         {

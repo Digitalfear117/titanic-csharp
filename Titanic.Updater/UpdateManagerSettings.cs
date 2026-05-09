@@ -53,6 +53,11 @@ public class UpdateManagerSettings
     public bool ValidatePatchUpdateChecksums = true;
 
     /// <summary>
+    /// The base URL to use for API requests. Should only be changed for testing against staging or local API instances.
+    /// </summary>
+    public string ApiBaseUrl = "https://api.titanic.sh";
+
+    /// <summary>
     /// The value to set ZipConstants.DefaultCodePage to. Leave as default (0 on CoreCLR, null on framework) if this doesn't break your client.
     /// Set to null to disable setting this variable. Set to 0 to use the system's default code page (fixes exceptions on CoreCLR).
     /// </summary>

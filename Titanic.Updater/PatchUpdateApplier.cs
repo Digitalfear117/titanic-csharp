@@ -96,7 +96,7 @@ public sealed class PatchUpdateApplier
         BackupDestination(destination, backupRoot, backups);
 
         if (File.Exists(destination))
-            File.Delete(destination);
+            MoveExistingFileOutOfTheWay(destination);
     }
 
     private void StoreIfNotExists(DownloadedUpdatePart part, UpdateAction action, string backupRoot, Dictionary<string, string?> backups)
@@ -261,19 +261,26 @@ public sealed class PatchUpdateApplier
     {
         foreach (KeyValuePair<string, string?> backup in backups)
         {
-            string destination = backup.Key;
+            try
+            {
+                string destination = backup.Key;
 
-            if (File.Exists(destination))
-                File.Delete(destination);
+                if (File.Exists(destination))
+                    MoveExistingFileOutOfTheWay(destination);
 
-            if (backup.Value == null)
-                continue;
+                if (backup.Value == null)
+                    continue;
 
-            string? directory = Path.GetDirectoryName(destination);
-            if (!string.IsNullOrEmpty(directory))
-                Directory.CreateDirectory(directory);
+                string? directory = Path.GetDirectoryName(destination);
+                if (!string.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
 
-            File.Copy(backup.Value, destination, true);
+                File.Copy(backup.Value, destination, true);
+            }
+            catch
+            {
+                // if this fails we're pretty much screwed anyway lmao
+            }
         }
     }
 
@@ -289,19 +296,56 @@ public sealed class PatchUpdateApplier
             string destinationFullPath = Path.GetFullPath(destination);
             if (!string.IsNullOrEmpty(executablePath) && string.Equals(destinationFullPath, Path.GetFullPath(executablePath), StringComparison.OrdinalIgnoreCase))
             {
-                string oldPath = destination + ".old";
-                if (File.Exists(oldPath))
-                    File.Delete(oldPath);
-
-                File.Move(destination, oldPath);
+                MoveExistingFileOutOfTheWay(destination, destination + ".old");
             }
             else
             {
-                File.Delete(destination);
+                MoveExistingFileOutOfTheWay(destination);
             }
         }
 
         File.Move(source, destination);
+    }
+
+    private static string MoveExistingFileOutOfTheWay(string path, string? preferredPath = null)
+    {
+        string movePath = preferredPath ?? CreateMovedAsidePath(path);
+
+        if (File.Exists(movePath))
+            MoveExistingFileOutOfTheWay(movePath);
+
+        File.Move(path, movePath);
+
+        if (preferredPath == null)
+            TryDeleteFile(movePath);
+
+        return movePath;
+    }
+
+    private static string CreateMovedAsidePath(string path)
+    {
+        string candidate;
+
+        do
+        {
+            candidate = path + ".old." + Guid.NewGuid().ToString("N");
+        }
+        while (File.Exists(candidate));
+
+        return candidate;
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch
+        {
+            // If windows still has the file open, leaving the renamed file behind
+            // is better than failing the update while the original path is free
+        }
     }
 
     private static void DeleteDirectoryIfExists(string path)

@@ -81,15 +81,22 @@ public class UpdateInformation
         if (this._downloadUri == null || !this._downloadUri.IsAbsoluteUri || !this._downloadUri.Host.Contains("mediafire.com"))
             return false;
 
-        IHttpInterface http = HttpInterfaceFactory.Create("https://mediafire.com");
-        MediaFireDownloader downloader = new(http);
+        try
+        {
+            IHttpInterface http = HttpInterfaceFactory.Create("https://mediafire.com");
+            MediaFireDownloader downloader = new(http);
 
-        MediaFireDownloader.DownloadItem? downloadItem = downloader.FetchDirectDownloadUrl(this.DownloadUrl);
-        if (downloadItem == null)
+            MediaFireDownloader.DownloadItem? downloadItem = downloader.FetchDirectDownloadUrl(this.DownloadUrl);
+            if (downloadItem == null)
+                return false;
+
+            this.DownloadUrl = downloadItem.DownloadUrl;
+            return true;
+        }
+        catch
+        {
             return false;
-
-        this.DownloadUrl = downloadItem.DownloadUrl;
-        return true;
+        }
     }
 
     private string GetDownloadPath()

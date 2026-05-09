@@ -28,11 +28,7 @@ public class UpdateManager : IDisposable
 
         // Clean up old the executable we made if we just updated
         if (this._settings.ReplaceCurrentExecutable)
-        {
-            string processPath = ExecutablePath + ".old";
-            if (File.Exists(processPath))
-                File.Delete(processPath);
-        }
+            DeleteOldExecutables(ExecutablePath);
     }
 
     public UpdateInformation? CheckUpdateForClient(ModdedClientInformation clientInfo)
@@ -205,12 +201,6 @@ public class UpdateManager : IDisposable
 
         ZipUtil.Extract(update.Path, staging);
 
-        if (this._settings.ReplaceCurrentExecutable)
-        {
-            string processPath = ExecutablePath;
-            File.Move(processPath, processPath + ".old");
-        }
-
         string outputDir = GetOutputDirectory(update.ClientIdentifier);
 
         if (!Directory.Exists(outputDir))
@@ -221,14 +211,8 @@ public class UpdateManager : IDisposable
         {
             string relativePath = UpdatePathUtil.GetRelativePath(staging, file);
             string dest = UpdatePathUtil.CombineSafe(outputDir, relativePath);
-            if (File.Exists(dest))
-                File.Delete(dest);
 
-            string? directory = Path.GetDirectoryName(dest);
-            if (!string.IsNullOrEmpty(directory))
-                Directory.CreateDirectory(directory);
-
-            File.Move(file, dest);
+            PatchUpdateApplier.MoveFileAndReplace(file, dest, this._settings.ReplaceCurrentExecutable ? ExecutablePath : null);
         }
 
         SetLinuxExecutableBit(outputDir);
@@ -292,7 +276,7 @@ public class UpdateManager : IDisposable
         if (string.IsNullOrEmpty(outputDir))
             outputDir = Environment.CurrentDirectory;
 
-        if (this._settings.IncludeClientIdentifierInOutputPath)
+        if (_settings.IncludeClientIdentifierInOutputPath)
             outputDir = Path.Combine(outputDir, clientIdentifier + Path.DirectorySeparatorChar);
 
         return outputDir;
@@ -311,12 +295,76 @@ public class UpdateManager : IDisposable
 #endif
     }
 
-    private static string ExecutablePath =>
-#if NET10_0_OR_GREATER
-        Environment.ProcessPath!;
-#else
-        Assembly.GetEntryAssembly()!.Location;
+    /// <summary>
+    /// Resolves the path to the currently running executable.
+    /// On .NET 8+ we can use Environment.ProcessPath which is more reliable,
+    /// otherwise we fall back to Assembly.GetEntryAssembly().Location which
+    /// may not always be accurate, e.g. in single-file publish scenarios
+    /// </summary>
+    private static string ExecutablePath
+    {
+        get
+        {
+#if NET8_0_OR_GREATER
+            if (!string.IsNullOrEmpty(Environment.ProcessPath) && IsPathInDirectory(Environment.ProcessPath, AppContext.BaseDirectory))
+                return Environment.ProcessPath;
 #endif
+
+            return Assembly.GetEntryAssembly()!.Location;
+        }
+    }
+
+    /// <summary>
+    /// Deletes old executables we may have created during a previous update.
+    /// We move old/running executables to <filename>.old & move the new ones in place,
+    /// so we want to clean up any old ones that may be left over from previous updates.
+    /// </summary>
+    private static void DeleteOldExecutables(string executablePath)
+    {
+        TryDeleteFile(executablePath + ".old");
+
+        string? directory = Path.GetDirectoryName(executablePath);
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+            return;
+
+        string searchPattern = Path.GetFileName(executablePath) + ".old.*";
+        foreach (string path in Directory.GetFiles(directory, searchPattern, SearchOption.TopDirectoryOnly))
+            TryDeleteFile(path);
+    }
+
+#if NET8_0_OR_GREATER
+    private static bool IsPathInDirectory(string path, string directory)
+    {
+        try
+        {
+            string fullPath = Path.GetFullPath(path);
+            string fullDirectory = Path.GetFullPath(directory);
+            
+            if (!fullDirectory.EndsWith(Path.DirectorySeparatorChar.ToString()) && !fullDirectory.EndsWith(Path.AltDirectorySeparatorChar.ToString()))
+                fullDirectory += Path.DirectorySeparatorChar;
+
+            return fullPath.StartsWith(fullDirectory, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+#endif
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // The previous process may still be shutting down &
+            // is holding a lock on the file
+        }
+    }
 
     public void Dispose()
     {

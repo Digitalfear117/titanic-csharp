@@ -284,7 +284,19 @@ public sealed class PatchUpdateApplier
         }
     }
 
-    private static void MoveFileAndReplace(string source, string destination, string? executablePath)
+    internal static void MoveFileAndReplace(string source, string destination, string? executablePath)
+    {
+        try
+        {
+            DoMoveFileAndReplace(source, destination, executablePath);
+        }
+        catch (Exception ex)
+        {
+            throw new IOException($"Failed to replace '{destination}' with '{source}'.", ex);
+        }
+    }
+
+    private static void DoMoveFileAndReplace(string source, string destination, string? executablePath)
     {
         string? directory = Path.GetDirectoryName(destination);
 
@@ -296,7 +308,10 @@ public sealed class PatchUpdateApplier
             string destinationFullPath = Path.GetFullPath(destination);
             if (!string.IsNullOrEmpty(executablePath) && string.Equals(destinationFullPath, Path.GetFullPath(executablePath), StringComparison.OrdinalIgnoreCase))
             {
-                MoveExistingFileOutOfTheWay(destination, destination + ".old");
+                if (TryReplaceInUseFile(source, destination))
+                    return;
+
+                MoveExistingFileOutOfTheWay(destination, CreateMovedAsidePath(destination));
             }
             else
             {
@@ -307,6 +322,33 @@ public sealed class PatchUpdateApplier
         File.Move(source, destination);
     }
 
+    /// <summary>
+    /// Attempts to replace a file that may be in use by the operating system
+    /// (e.g. the currently running executable) using File.Replace.
+    /// </summary>
+    private static bool TryReplaceInUseFile(string source, string destination)
+    {
+        string oldPath = CreateMovedAsidePath(destination);
+
+        try
+        {
+            File.Replace(source, destination, oldPath);
+            TryDeleteFile(oldPath);
+            return true;
+        }
+        catch
+        {
+            TryDeleteFile(oldPath);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Moves the existing file at the given path to a new location to free up the original path.
+    /// Example: "osu!.dll" -> "osu!.dll.old.{guid}"
+    /// If the update is successful, the moved file will be deleted.
+    /// If the update fails, the moved file can be used to restore the original state.
+    /// </summary>
     private static string MoveExistingFileOutOfTheWay(string path, string? preferredPath = null)
     {
         string movePath = preferredPath ?? CreateMovedAsidePath(path);

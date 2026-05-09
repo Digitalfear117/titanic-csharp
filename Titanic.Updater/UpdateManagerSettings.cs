@@ -18,9 +18,9 @@ public class UpdateManagerSettings
     public Action<ManifestAppliedEvent>? PatchUpdateManifestApplied;
 
     /// <summary>
-    /// The data directory to use for staging updates. Default is 'Data/Updater'.
+    /// The data directory to use for staging updates. Default is 'Data/u'.
     /// </summary>
-    public string DataDirectory = "Data/Updater";
+    public string DataDirectory = "Data/u";
     
     /// <summary>
     /// Should we replace the currently running executable? Disable if writing an external update manager.

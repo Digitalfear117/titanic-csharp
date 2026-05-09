@@ -88,7 +88,7 @@ public class UpdateManager : IDisposable
 
     private DownloadedUpdate DownloadPatchUpdatePath(UpdateInformation update)
     {
-        string updatePath = Path.Combine(_settings.DataDirectory, update.ClientIdentifier + Path.DirectorySeparatorChar + "_manifests");
+        string updatePath = Path.Combine(_settings.DataDirectory, "_manifests");
 
         if (!Directory.Exists(updatePath))
             Directory.CreateDirectory(updatePath);

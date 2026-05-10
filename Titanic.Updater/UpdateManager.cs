@@ -307,7 +307,7 @@ public class UpdateManager : IDisposable
 
     /// <summary>
     /// Deletes old executables we may have created during a previous update.
-    /// We move old/running executables to <filename>.old & move the new ones in place,
+    /// We move old/running executables to {filename}.old.{guid} & move the new ones in place,
     /// so we want to clean up any old ones that may be left over from previous updates.
     /// </summary>
     private static void DeleteOldExecutables(string executablePath)

@@ -128,7 +128,7 @@ public sealed class PatchUpdateApplier
 
             string patchFile = DownloadPayload(part, action.SourceUrlPatch, action.PatchChecksum, "patch");
 
-            string result = Path.Combine(_stagingDir, Guid.NewGuid().ToString("N") + ".patched");
+            string result = Path.Combine(_stagingDir, "patched_" + Guid.NewGuid().ToString("N"));
             new BSPatcher().Patch(destination, result, patchFile);
             VerifyFileChecksum(result, action.Checksum, "patch result");
 

@@ -20,7 +20,7 @@ public sealed class PatchUpdateBuilder
         Uri baseUri = CreateBaseUri(baseUrl);
         Directory.CreateDirectory(outputDirectory);
 
-        string tempDir = Path.Combine(Path.GetTempPath(), "titanic-patch-" + Guid.NewGuid().ToString("N"));
+        string tempDir = Path.Combine(Path.GetTempPath(), "patch-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
 
         try
@@ -78,7 +78,7 @@ public sealed class PatchUpdateBuilder
                 }
 
                 // The file has changed, lets create a patch!
-                string patchPath = Path.Combine(tempDir, Guid.NewGuid().ToString("N") + ".patch");
+                string patchPath = Path.Combine(tempDir, "p_" + Guid.NewGuid().ToString("N"));
                 new BSDiffer().Diff(oldFile, newFile.Value, patchPath);
 
                 FileInfo patchInfo = new(patchPath);

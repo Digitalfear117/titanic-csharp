@@ -1,4 +1,3 @@
-using System.Linq;
 using Titanic.API.Models;
 using Titanic.Helpers.Http;
 using Titanic.Helpers.Downloaders;
@@ -48,8 +47,10 @@ public class UpdateInformation
         }
     }
 
-    public UpdateInformation(TitanicReleaseModel titanicRelease) : this(titanicRelease.Downloads.First(), titanicRelease.Name, titanicRelease.Name)
-    {}
+    public UpdateInformation(TitanicReleaseModel titanicRelease)
+    : this(GetFirstDownload(titanicRelease), titanicRelease.Name, titanicRelease.Name)
+    {
+    }
 
     public UpdateInformation(string downloadUrl, string clientIdentifier, string version)
     {
@@ -107,5 +108,13 @@ public class UpdateInformation
         return this._downloadUri.IsAbsoluteUri
             ? this._downloadUri.AbsolutePath
             : this._downloadUri.OriginalString;
+    }
+
+    private static string GetFirstDownload(TitanicReleaseModel titanicRelease)
+    {
+        foreach (string download in titanicRelease.Downloads)
+            return download;
+
+        throw new InvalidOperationException($"Release '{titanicRelease.Name}' does not contain any downloads.");
     }
 }

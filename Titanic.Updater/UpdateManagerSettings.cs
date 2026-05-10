@@ -1,21 +1,24 @@
 namespace Titanic.Updater;
 
+public delegate void UpdateExitHandler();
+public delegate void UpdateEventHandler<T>(T evt);
+
 public class UpdateManagerSettings
 {
     /// <summary>
     /// Called after installing an update to signal this version of osu! to close.
     /// </summary>
-    public Action? Exit;
+    public UpdateExitHandler? Exit;
 
     /// <summary>
     /// Called after a patch update action successfully patches a file.
     /// </summary>
-    public Action<FilePatchedEvent>? PatchUpdateFilePatched;
+    public UpdateEventHandler<FilePatchedEvent>? PatchUpdateFilePatched;
 
     /// <summary>
     /// Called after a patch update manifest has been fully applied.
     /// </summary>
-    public Action<ManifestAppliedEvent>? PatchUpdateManifestApplied;
+    public UpdateEventHandler<ManifestAppliedEvent>? PatchUpdateManifestApplied;
 
     /// <summary>
     /// The data directory to use for staging updates. Default is 'Data/u'.

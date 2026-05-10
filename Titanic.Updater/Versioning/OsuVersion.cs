@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace Titanic.Updater.Versioning;
@@ -78,7 +77,7 @@ public readonly partial struct OsuVersion : IEquatable<OsuVersion>
             {
                 if (version[0] == 'b')
                     return Parse(version, OsuVersionKind.BuildNumber);
-                if (version.Count(c => c == '.') == 2)
+                if (CountCharacters(version, '.') == 2)
                     return Parse(version, OsuVersionKind.Semver);
                 return Parse(version, OsuVersionKind.BuildDate);
             }
@@ -88,5 +87,18 @@ public readonly partial struct OsuVersion : IEquatable<OsuVersion>
     public override string ToString()
     {
         return $"OsuVersion {this.Major}.{this.Minor}.{this.Patch}";
+    }
+
+    private static int CountCharacters(string value, char character)
+    {
+        int count = 0;
+
+        foreach (char c in value)
+        {
+            if (c == character)
+                count++;
+        }
+
+        return count;
     }
 }

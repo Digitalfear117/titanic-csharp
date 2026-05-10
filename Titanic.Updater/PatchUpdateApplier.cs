@@ -9,9 +9,10 @@ public sealed class PatchUpdateApplier
     private readonly string _outputDir;
     private readonly string _stagingDir;
     private readonly string? _executablePath;
-    private readonly Func<string, byte[]> _download;
+    private readonly PayloadDownloader _download;
+    public delegate byte[] PayloadDownloader(string url);
 
-    public PatchUpdateApplier(UpdateManagerSettings settings, string outputDir, string stagingDir, string? executablePath = null, Func<string, byte[]>? download = null)
+    public PatchUpdateApplier(UpdateManagerSettings settings, string outputDir, string stagingDir, string? executablePath = null, PayloadDownloader? download = null)
     {
         _settings = settings;
         _outputDir = outputDir;
@@ -137,8 +138,10 @@ public sealed class PatchUpdateApplier
 
             _settings.PatchUpdateFilePatched?.Invoke(new FilePatchedEvent(part, manifest, action, destination));
         }
-        catch
+        catch (Exception patchException)
         {
+            System.Diagnostics.Debug.WriteLine(patchException);
+
             try
             {
                 // Patching the current file did not succeed, so

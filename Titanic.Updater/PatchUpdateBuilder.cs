@@ -1,7 +1,6 @@
 #if NET8_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
-using System.Linq;
 using Titanic.Helpers.Patching;
 
 namespace Titanic.Updater;
@@ -231,7 +230,11 @@ public sealed class PatchUpdateBuilder
 
     private static bool ContainsPath(List<string> paths, string path)
     {
-        return paths.Any(p => string.Equals(UpdatePathUtil.NormalizeArchivePath(p), path, StringComparison.OrdinalIgnoreCase));
+        foreach (string p in paths)
+            if (string.Equals(UpdatePathUtil.NormalizeArchivePath(p), path, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+        return false;
     }
 
     private static string CreatePatchSourceName(string sourceHash, string destinationHash)

@@ -34,10 +34,6 @@
         <NoWarn>NU1902;NU1903</NoWarn>
     </PropertyGroup>
     
-    <ItemGroup Condition="'$(TargetFramework)' == 'net20'">
-        <PackageReference Include="LINQlone" Version="1.1.0" />
-    </ItemGroup>
-    
     <ItemGroup Condition="'$(TargetFramework)' == 'net20' or '$(TargetFramework)' == 'net35' or '$(TargetFramework)' == 'net40'">
         <PackageReference Include="SharpZipLib" Version="0.86.0" />
     </ItemGroup>

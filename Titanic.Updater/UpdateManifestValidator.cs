@@ -13,6 +13,12 @@ public static class UpdateManifestValidator
         if (!string.Equals(manifest.Client, clientIdentifier, StringComparison.OrdinalIgnoreCase))
             throw new PatchUpdateException($"Update manifest is for client '{manifest.Client}', expected '{clientIdentifier}'");
 
+        if (manifest.From == null)
+            throw new PatchUpdateException("Update manifest is missing from endpoint");
+
+        if (manifest.To == null)
+            throw new PatchUpdateException("Update manifest is missing to endpoint");
+
         if (manifest.Actions == null)
             throw new PatchUpdateException("Update manifest has no actions");
 

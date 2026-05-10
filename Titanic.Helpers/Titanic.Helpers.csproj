@@ -18,7 +18,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <IsPackable>false</IsPackable>
+    <IsPackable>true</IsPackable>
+    <NoWarn>$(NoWarn);CA2022</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

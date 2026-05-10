@@ -9,7 +9,6 @@
     <IsTrimmable>true</IsTrimmable>
 
     <PackageId>Titanic.CDN</PackageId>
-    <Version>1.0.0</Version>
     <Authors>Levi (Lekuru)</Authors>
     <Description>API wrapper for cdn.titanic.sh</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

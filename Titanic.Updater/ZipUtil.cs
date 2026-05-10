@@ -57,7 +57,7 @@ public static class ZipUtil
             if (name.Length == 0)
                 continue;
 
-            string fullPath = Path.Combine(outputDir, name);
+            string fullPath = UpdatePathUtil.CombineSafe(outputDir, name);
             string? directory = Path.GetDirectoryName(fullPath);
 
             if (!string.IsNullOrEmpty(directory))

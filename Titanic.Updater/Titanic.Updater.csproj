@@ -5,7 +5,7 @@
         <ImplicitUsings>false</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>14</LangVersion>
-        <IsTrimmable>true</IsTrimmable>
+        <IsTrimmable>false</IsTrimmable>
 
         <PackageId>Titanic.Updater</PackageId>
         <Authors>jvyden</Authors>

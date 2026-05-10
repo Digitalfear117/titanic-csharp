@@ -22,6 +22,18 @@ public static class ChecksumUtils
 
         return builder.ToString();
     }
+    
+    public static string ComputeMd5(byte[] bytes)
+    {
+        using MD5 md5 = MD5.Create();
+        byte[] hash = md5.ComputeHash(bytes);
+        StringBuilder builder = new(hash.Length * 2);
+
+        foreach (byte b in hash)
+            builder.Append(b.ToString("x2"));
+
+        return builder.ToString();
+    }
 
     public static bool Md5Equals(string? actual, string? expected)
     {

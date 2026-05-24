@@ -26,9 +26,9 @@ public class UpdateManager : IDisposable
 #endif
         }
 
-        // Clean up old the executable we made if we just updated
+        // Clean up old files we moved aside during a previous update
         if (this._settings.ReplaceCurrentExecutable)
-            DeleteOldExecutables(ExecutablePath);
+            DeleteOldUpdateFiles(ExecutablePath);
     }
 
     public UpdateInformation? CheckUpdateForClient(ModdedClientInformation clientInfo)
@@ -306,11 +306,11 @@ public class UpdateManager : IDisposable
     }
 
     /// <summary>
-    /// Deletes old executables we may have created during a previous update.
-    /// We move old/running executables to {filename}.old.{guid} & move the new ones in place,
+    /// Deletes old files we may have created during a previous update.
+    /// We move old files to {filename}.old.{guid} & move the new ones in place,
     /// so we want to clean up any old ones that may be left over from previous updates.
     /// </summary>
-    private static void DeleteOldExecutables(string executablePath)
+    private static void DeleteOldUpdateFiles(string executablePath)
     {
         TryDeleteFile(executablePath + ".old");
 
@@ -318,9 +318,66 @@ public class UpdateManager : IDisposable
         if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
             return;
 
-        string searchPattern = Path.GetFileName(executablePath) + ".old.*";
-        foreach (string path in Directory.GetFiles(directory, searchPattern, SearchOption.TopDirectoryOnly))
-            TryDeleteFile(path);
+        DeleteMovedAsideFilesInDirectory(directory);
+    }
+
+    private static void DeleteMovedAsideFilesInDirectory(string directory)
+    {
+        // Search target directory for matching moved-aside files & nuke them
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(directory, "*.old.*", SearchOption.TopDirectoryOnly);
+        }
+        catch
+        {
+            return;
+        }
+
+        foreach (string path in files)
+        {
+            if (IsMovedAsideFile(path))
+                TryDeleteFile(path);
+        }
+
+        // Recursively repeat this process for subdirectories
+        string[] directories;
+        try
+        {
+            directories = Directory.GetDirectories(directory);
+        }
+        catch
+        {
+            return;
+        }
+
+        foreach (string childDirectory in directories)
+            DeleteMovedAsideFilesInDirectory(childDirectory);
+    }
+
+    private static bool IsMovedAsideFile(string path)
+    {
+        // Moved-aside filenames are in the format {filename}.old.{guid}
+        string filename = Path.GetFileName(path);
+        int oldMarkerIndex = filename.LastIndexOf(".old.", StringComparison.OrdinalIgnoreCase);
+
+        if (oldMarkerIndex < 0)
+            // ".old" marker not found in filename
+            return false;
+
+        string suffix = filename.Substring(oldMarkerIndex + ".old.".Length);
+
+        try
+        {
+            // Check if guid suffix is also valid just to be sure
+            new Guid(suffix);
+            return true;
+        }
+        catch
+        {
+            // Not a valid guid
+            return false;
+        }
     }
 
 #if NET8_0_OR_GREATER

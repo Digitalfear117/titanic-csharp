@@ -123,14 +123,23 @@ public class PatchUpdateTests
         Assert.Contains("osu!.exe", patchActionDestinations);
         Assert.All(patchedDestinations, destination => Assert.Contains(destination, patchActionDestinations));
 
+        // A multi-part update can patch the same file more than once
+        // Only the last patch checksum for each destination should match the final file
+        Dictionary<string, string> latestChecksumByDestination = new(StringComparer.OrdinalIgnoreCase);
+
         foreach (UpdateAction action in downloadedUpdate.Parts.SelectMany(part => part.Manifest.Actions))
         {
             if (!string.Equals(action.Type, "patch", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            string destination = Path.Combine(installDirectory, action.Destination);
-            Assert.True(File.Exists(destination), $"Expected patched file to exist: {action.Destination}");
-            Assert.Equal(action.Checksum, ChecksumUtils.ComputeMd5(destination));
+            latestChecksumByDestination[action.Destination] = action.Checksum;
+        }
+
+        foreach (KeyValuePair<string, string> patch in latestChecksumByDestination)
+        {
+            string destination = Path.Combine(installDirectory, patch.Key);
+            Assert.True(File.Exists(destination), $"Expected patched file to exist: {patch.Key}");
+            Assert.Equal(patch.Value, ChecksumUtils.ComputeMd5(destination));
         }
 
         Assert.Contains(updateModel.TargetRelease.Version, appliedVersions);

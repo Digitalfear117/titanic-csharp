@@ -24,17 +24,19 @@ public class WebClientInterface : IHttpInterface
 
     private void PrepareRequest(Dictionary<string, string>? headers)
     {
+        // Assign via the pairs instead of Add(), so that request headers replace
+        // defaults rather than merging into a comma-separated list
         _client.Headers.Clear();
         foreach (KeyValuePair<string, string> kvp in _defaultHeaders)
         {
-            _client.Headers.Add(kvp.Key, kvp.Value);
+            _client.Headers[kvp.Key] = kvp.Value;
         }
 
         if (headers != null)
         {
             foreach (KeyValuePair<string, string> kvp in headers)
             {
-                _client.Headers.Add(kvp.Key, kvp.Value);
+                _client.Headers[kvp.Key] = kvp.Value;
             }
         }
     }
@@ -129,12 +131,14 @@ public class WebClientInterface : IHttpInterface
 
     public void AddDefaultHeader(string key, string value)
     {
-        this._defaultHeaders[key] = value;
+        lock (_client)
+            this._defaultHeaders[key] = value;
     }
 
     public void RemoveDefaultHeader(string key)
     {
-        this._defaultHeaders.Remove(key);
+        lock (_client)
+            this._defaultHeaders.Remove(key);
     }
     
     public void Dispose()

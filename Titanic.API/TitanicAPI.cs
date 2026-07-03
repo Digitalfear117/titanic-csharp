@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
+#if NET5_0_OR_GREATER
+using System.Net.Http;
+#endif
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Titanic.API.Models;
@@ -37,12 +41,23 @@ namespace Titanic.API
                 field = value;
 
                 this._http.RemoveDefaultHeader("Authorization");
-                this._http.AddDefaultHeader("Authorization", $"Bearer {value.AccessToken}");
+
+                if (value != null)
+                    this._http.AddDefaultHeader("Authorization", $"Bearer {value.AccessToken}");
+
+                TokenUpdated?.Invoke(value);
             }
         }
 
+        /// <summary>
+        /// Raised whenever the token pair changes, i.e. after a login or refresh.
+        /// </summary>
+        public event Action<TokenModel> TokenUpdated;
+
+        private readonly object _refreshLock = new();
+
         public bool IsLoggedIn => Token != null;
-        public bool IsTokenExpired => Token == null || DateTime.Now > Token.ExpiresAt;
+        public bool IsTokenExpired => Token == null || DateTime.Now > Token.ExpiresAt.AddSeconds(-30);
 
         public TitanicAPI(string baseUrl = "https://api.titanic.sh")
         {
@@ -81,23 +96,7 @@ namespace Titanic.API
 #endif
             (HttpMethodType methodType, string endpoint, object content = null, Dictionary<string, string> headers = null, bool checkToken = true)
         {
-            if (checkToken)
-                EnsureValidAccessToken();
-
-            string jsonContent = null;
-
-            // Only serialize content for methods that support a body
-            if (content != null && methodType != HttpMethodType.GET)
-            {
-                jsonContent = JsonConvert.SerializeObject(content, _settings);
-                headers ??= new Dictionary<string, string>();
-                headers["Content-Type"] = "application/json";
-            }
-
-            string str = this._http.RequestString(
-                methodType, endpoint,
-                jsonContent, headers
-            );
+            string str = PerformRequest(methodType, endpoint, content, headers, checkToken);
 
             T obj = JsonConvert.DeserializeObject<T>(str, _settings);
             if (obj == null)
@@ -121,10 +120,29 @@ namespace Titanic.API
 #endif
             (HttpMethodType methodType, string endpoint, object content = null, Dictionary<string, string> headers = null, bool checkToken = true)
         {
+            string str = PerformRequest(methodType, endpoint, content, headers, checkToken);
+
+            List<T> obj = JsonConvert.DeserializeObject<List<T>>(str, _settings);
+            if (obj == null)
+                throw new Exception("Response had null content");
+
+            return obj;
+        }
+
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage(
+            "Trimming",
+            "IL2026",
+            Justification = "The appropriate code is marked as untrimmed."
+        )]
+#endif
+        private string PerformRequest(HttpMethodType methodType, string endpoint, object content, Dictionary<string, string> headers, bool checkToken)
+        {
             if (checkToken)
                 EnsureValidAccessToken();
 
             string jsonContent = null;
+            string usedAccessToken = Token?.AccessToken;
 
             // Only serialize content for methods that support a body
             if (content != null && methodType != HttpMethodType.GET)
@@ -134,16 +152,37 @@ namespace Titanic.API
                 headers["Content-Type"] = "application/json";
             }
 
-            string str = this._http.RequestString(
-                methodType, endpoint,
-                jsonContent, headers
-            );
+            try
+            {
+                return this._http.RequestString(
+                    methodType, endpoint,
+                    jsonContent, headers
+                );
+            }
+            catch (Exception e) when (checkToken && IsLoggedIn && IsUnauthorizedError(e))
+            {
+                // The access token was rejected before its expected expiry
+                Debug.Print("TitanicAPI: Request was unauthorized, refreshing token & retrying...");
+                RefreshAccessToken(usedAccessToken);
 
-            List<T> obj = JsonConvert.DeserializeObject<List<T>>(str, _settings);
-            if (obj == null)
-                throw new Exception("Response had null content");
+                return this._http.RequestString(
+                    methodType, endpoint,
+                    jsonContent, headers
+                );
+            }
+        }
 
-            return obj;
+        private static bool IsUnauthorizedError(Exception e)
+        {
+            if (e is WebException webException && webException.Response is HttpWebResponse response)
+                return response.StatusCode == HttpStatusCode.Unauthorized;
+
+#if NET5_0_OR_GREATER
+            if (e is HttpRequestException httpException)
+                return httpException.StatusCode == HttpStatusCode.Unauthorized;
+#endif
+
+            return false;
         }
 
         public T Get
@@ -179,8 +218,7 @@ namespace Titanic.API
             (string endpoint, object data, Dictionary<string, string> headers = null)
         {
             Debug.Print("TitanicAPI: POST " + endpoint);
-            // NOTE: we skip token checking for the refresh endpoint to avoid infinite loops
-            return this.Send<T>(HttpMethodType.POST, endpoint, data, headers, endpoint != "/account/refresh");
+            return this.Send<T>(HttpMethodType.POST, endpoint, data, headers, RequiresTokenCheck(endpoint));
         }
 
         public List<T> PostList
@@ -192,8 +230,7 @@ namespace Titanic.API
             (string endpoint, object data, Dictionary<string, string> headers = null)
         {
             Debug.Print("TitanicAPI: POST " + endpoint);
-            // NOTE: we skip token checking for the refresh endpoint to avoid infinite loops
-            return this.SendList<T>(HttpMethodType.POST, endpoint, data, headers, endpoint != "/account/refresh");
+            return this.SendList<T>(HttpMethodType.POST, endpoint, data, headers, RequiresTokenCheck(endpoint));
         }
 
         public T Put
@@ -249,14 +286,45 @@ namespace Titanic.API
             return this._http.RequestBytes(HttpMethodType.GET, url, (string)null, null);
         }
 
+        private static bool RequiresTokenCheck(string endpoint)
+        {
+            // Skip token checking for auth endpoints, since refresh would
+            // recurse infinitely, and login would supply its own credentials
+            return endpoint != "/account/refresh" && endpoint != "/account/login";
+        }
+
         public void EnsureValidAccessToken()
         {
             if (!IsLoggedIn || !IsTokenExpired)
                 return;
 
-            RefreshTokenRequest request = new(Token.RefreshToken);
-            request.BlockingPerform(this);
-            Debug.Print("TitanicAPI: Access token refreshed (EnsureValidAccessToken)");
+            lock (_refreshLock)
+            {
+                // Another thread may have refreshed while we were waiting on the lock
+                if (!IsLoggedIn || !IsTokenExpired)
+                    return;
+
+                RefreshTokenRequest request = new(Token.RefreshToken);
+                request.BlockingPerform(this);
+                Debug.Print("TitanicAPI: Access token refreshed (EnsureValidAccessToken)");
+            }
+        }
+
+        private void RefreshAccessToken(string staleAccessToken)
+        {
+            lock (_refreshLock)
+            {
+                if (!IsLoggedIn)
+                    return;
+
+                // Another thread may have already replaced the rejected token
+                if (staleAccessToken != null && Token.AccessToken != staleAccessToken)
+                    return;
+
+                RefreshTokenRequest request = new(Token.RefreshToken);
+                request.BlockingPerform(this);
+                Debug.Print("TitanicAPI: Access token refreshed (RefreshAccessToken)");
+            }
         }
 
         public void Dispose()

@@ -1,6 +1,10 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
+#if NET8_0_OR_GREATER
 using ICSharpCode.SharpZipLib.Zip;
+#else
+using Titanic.ICSharpCode.SharpZipLib.Zip;
+#endif
 using Titanic.API;
 using Titanic.API.Models;
 using Titanic.API.Requests;
@@ -19,10 +23,8 @@ public class UpdateManager : IDisposable
 
         if (settings.SharpZipLibCodePage != null)
         {
-#if !NET45_OR_GREATER && !NET8_0_OR_GREATER
+#if !NET8_0_OR_GREATER
             ZipConstants.DefaultCodePage = settings.SharpZipLibCodePage.Value;
-#elif !NET8_0_OR_GREATER
-            ZipStrings.CodePage = settings.SharpZipLibCodePage.Value;
 #endif
         }
 

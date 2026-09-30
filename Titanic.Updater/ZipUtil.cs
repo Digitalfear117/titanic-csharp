@@ -1,5 +1,10 @@
+﻿#if NET8_0_OR_GREATER
 using ICSharpCode.SharpZipLib.Core;
 using ICSharpCode.SharpZipLib.Zip;
+#else
+using Titanic.ICSharpCode.SharpZipLib.Core;
+using Titanic.ICSharpCode.SharpZipLib.Zip;
+#endif
 
 namespace Titanic.Updater;
 
